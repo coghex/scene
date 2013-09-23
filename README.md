@@ -14,6 +14,7 @@ angle, it looks rediculous.
 
 to compile, go into the directory and enter:
 >make clean && make lorenz
+
 this will output lorenz.o, then:
 >./lorenz.o
 
