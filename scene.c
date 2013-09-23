@@ -22,6 +22,8 @@ int mode=0;       // What to display
 int fov=55;       // Field of view (for perspective)
 double asp=1;     // Aspect ratio
 double dim=5.0;   // Size of world
+double lx = 0, ly = 0;    // Perspective angle
+double camx = 0, camy = 0, camz = 0; // Camera Location
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
@@ -61,66 +63,92 @@ static void Project()
   glLoadIdentity();
 }
 
-/*
- *  Draw a cube
- *     at (x,y,z)
- *     dimentions (dx,dy,dz)
- *     rotated th about the y axis
- */
-static void cube(double x,double y,double z,
-                 double dx,double dy,double dz,
-                 double th)
-{
-   //  Save transformation
-   glPushMatrix();
-   //  Offset
-   glTranslated(x,y,z);
-  glRotated(th,0,1,0);
+// A function to draw a cone
+static void cone(double x, double y, double z,
+                     double dx, double dy, double dz,
+                     double th) {
+  GLfloat l,m,angle;
+  int piv = 1;
+  glPushMatrix();
+  glTranslated(x,y,z);
+  glRotated(th,1,0,0);
   glScaled(dx,dy,dz);
-  //  Cube
-  glBegin(GL_QUADS);
-  //  Front
-  glColor3f(1,0,0);
-  glVertex3f(-1,-1, 1);
-  glVertex3f(+1,-1, 1);
-  glVertex3f(+1,+1, 1);
-  glVertex3f(-1,+1, 1);
-  //  Back
-  glColor3f(0,0,1);
-  glVertex3f(+1,-1,-1);
-  glVertex3f(-1,-1,-1);
-  glVertex3f(-1,+1,-1);
-  glVertex3f(+1,+1,-1);
-  //  Right
-  glColor3f(1,1,0);
-  glVertex3f(+1,-1,+1);
-  glVertex3f(+1,-1,-1);
-  glVertex3f(+1,+1,-1);
-  glVertex3f(+1,+1,+1);
-  //  Left
-  glColor3f(0,1,0);
-  glVertex3f(-1,-1,-1);
-  glVertex3f(-1,-1,+1);
-  glVertex3f(-1,+1,+1);
-  glVertex3f(-1,+1,-1);
-  //  Top
-  glColor3f(0,1,1);
-  glVertex3f(-1,+1,+1);
-  glVertex3f(+1,+1,+1);
-  glVertex3f(+1,+1,-1);
-  glVertex3f(-1,+1,-1);
-  //  Bottom
-  glColor3f(1,0,1);
-  glVertex3f(-1,-1,-1);
-  glVertex3f(+1,-1,-1);
-  glVertex3f(+1,-1,+1);
-  glVertex3f(-1,-1,+1);
-  //  End
+
+  glBegin(GL_TRIANGLE_FAN);
+  glVertex3f(0.0f, 0.0f, 3.0f);
+
+  for(angle = 0.0f; angle < (2.0f*M_PI); angle += (M_PI/8.0f))
+    {
+    // x and y of next vertex
+    l = 2.0f*sin(angle);
+    m = 2.0f*cos(angle);
+    // next vertex for the triangle fan
+    glVertex2f(l, m);
+    }
   glEnd();
-  //  Undo transformations
+
+  // Now for the bottom. (another cone of height 0 off the bottom)
+  glBegin(GL_TRIANGLE_FAN);
+  glVertex2f(0.0f, 0.0f);
+  for(angle = 0.0f; angle < (2.0f*M_PI); angle += (M_PI/8.0f))
+    {
+    l = 2.0f*sin(angle);
+    m = 2.0f*cos(angle);
+    glVertex2f(m, l);
+    }
+  glEnd();
+
   glPopMatrix();
 }
 
+// A function to draw a cylinder
+static void cylinder(double x, double y, double z,
+                     double dx, double dy, double dz,
+                     double th) {
+  // Save transformation
+  glPushMatrix();
+  // Offset
+  glTranslated(x,y,z);
+  glRotated(th,0,1,0);
+  glScaled(dx,dy,dz);
+
+  float radius = 1;
+  float halfLength = 2;
+  int slices = 200;
+  int i;
+
+  // code was modified from an anonymous blog post
+  for(i=0; i<slices; i++) {
+    float theta = ((float)i)*2.0*M_PI;
+    float nextTheta = ((float)i+1)*2.0*M_PI;
+    glBegin(GL_TRIANGLE_STRIP);
+    // vertex at middle of end
+    glVertex3f(0.0, halfLength, 0.0);
+    // vertices at edges of circle
+    glVertex3f(radius*Cos(theta), halfLength, radius*Sin(theta));
+    glVertex3f (radius*Cos(nextTheta), halfLength, radius*Sin(nextTheta));
+    // the same vertices at the bottom of the cylinder
+    glVertex3f (radius*Cos(nextTheta), -halfLength, radius*Sin(nextTheta));
+    glVertex3f(radius*Cos(theta), -halfLength, radius*Sin(theta));
+    glVertex3f(0.0, -halfLength, 0.0);
+    glEnd();
+  }
+  glPopMatrix();
+}
+
+void tree(double x, double y, double z,
+          double dx, double dy, double dz,
+          double th) {
+  glTranslated(x,y,z);
+  glRotated(th,0,0,1);
+  glScaled(dx,dy,dz);
+
+  glColor3f(.55, .27, .07);
+  cylinder(0, .1, 0, .12, .25, .12, 0);
+  glColor3f(0, .3, 0);
+  cone(0, .25, 0, .2, .2, .2, 270);
+  cone(0, .6, 0, .2, .2, .2, 270);
+}
 // Display Routine
 void display()
 {
@@ -128,23 +156,24 @@ void display()
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   // Enable Z-buffering in OpenGL
   glEnable(GL_DEPTH_TEST);
+
   // Undo previous transformations
   glLoadIdentity();
   // Set view angle
-  double Ex = -2*dim*Sin(th)*Cos(ph);
-  double Ey = +2*dim        *Sin(ph);
-  double Ez = +2*dim*Cos(th)*Cos(ph);
-  gluLookAt(Ex,Ey,Ez , 0,0,0 , 0,Cos(ph),0);
+  double Ex = -2*dim*Sin(th)*Cos(ph) + camx;
+  double Ey = +2*dim        *Sin(ph) + camy;
+  double Ez = +2*dim*Cos(th)*Cos(ph) + camz;
+  gluLookAt(Ex,Ey,Ez , lx + camx,ly + camy, camz, 0,Cos(ph),0);
   // Decide what to draw
-  // Draw cubes
-  cube(1,1,1 , 0.3,0.3,0.3 , 0);
-  cube(0,0,0 , 0.2,0.2,0.2 , 0);
-  // White
-  glColor3f(1,1,1);
-  // Five pixels from the lower left corner of the window
-  glWindowPos2i(5,5);
-  // Print the text string
-  Print("Angle=%d,%d  Dim=%.1f FOV=%d",th,ph,dim,fov);
+
+  tree(-0.9, 0, 0, 1, 1, 1, 0);
+  tree(-1.1, 0, .4, 1, 1, 1, 0);
+  tree(-1, 0, .5, 1, 1, 1, 0);
+  tree(1, 0, .2, 1, 1, 1, 0);
+  tree(1, 0, .3, 1, 1, 1, 0);
+  tree(1.1, 0, .5, 1, 1, 1, 0);
+  tree(1, 1, 1, 0.2, 0.2, 0.2, 45);
+
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -157,19 +186,19 @@ void special(int key,int x,int y)
   switch (key) {
     // Right arrow key - increase angle by 5 degrees
     case(GLUT_KEY_RIGHT):
-      th += 5;
+      lx += 0.2;
       break;
     // Left arrow key - decrease angle by 5 degrees
     case(GLUT_KEY_LEFT):
-      th -= 5;
+      lx -= 0.2;
       break;
     // Up arrow key - increase elevation by 5 degrees
     case(GLUT_KEY_UP):
-      ph += 5;
+      ly += 0.2;
       break;
     // Down arrow key - decrease elevation by 5 degrees
     case(GLUT_KEY_DOWN):
-      ph -= 5;
+      ly -= 0.2;
       break;
   }
   // Keep angles to +/-360 degrees
@@ -191,21 +220,54 @@ void key(unsigned char ch,int x,int y)
     // Reset view angle
     case('0'):
       th = ph = 0;
+      camx = camy = camz = 0;
+      lx = ly = 0;
+      fov = 55;
       break;
-    case('+'):
+    case('['):
       dim += 0.2;
       break;
-    case('-'):
+    case(']'):
       if (dim>1)
         dim -= 0.2;
       break;
-    case('w'):
+    case('+'):
       if (ch<179)
         fov++;
       break;
-    case('s'):
+    case('-'):
       if(ch>1)
         fov--;
+      break;
+    case('h'):
+      th += 5;
+      break;
+    case('k'):
+      th -= 5;
+      break;
+    case('u'):
+      ph += 5;
+      break;
+    case('j'):
+      ph -= 5;
+      break;
+    case('d'):
+      camx += 0.1;
+      break;
+    case('a'):
+      camx -= 0.1;
+      break;
+    case('3'):
+      camy += 0.1;
+      break;
+    case('4'):
+      camy -= 0.1;
+      break;
+    case('s'):
+      camz += 0.1;
+      break;
+    case('w'):
+      camz -= 0.1;
       break;
   }
   Project();
