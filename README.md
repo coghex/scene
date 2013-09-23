@@ -16,3 +16,5 @@ to compile, go into the directory and enter:
 >make clean && make lorenz
 this will output lorenz.o, then:
 >./lorenz.o
+
+This Assignment took me 5-7 hours to complete
