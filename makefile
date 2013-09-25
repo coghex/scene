@@ -1,6 +1,15 @@
+UNAME := $(shell uname)
+
 CC=gcc
-LDFLAGS=-framework OpenGL -framework GLUT
+ifeq ($(UNAME), Linux)
+	LDFLAGS=-lglut -lGLU -lGL -lm
+endif
+ifeq ($(UNAME), Darwin)
+	LDFLAGS=-framework OpenGL -framework GLUT -Wall
+endif
 
-.c: ; $(CC) $@.c -o $@.o $(LDFLAGS)
+all: ; $(CC) scene.c -o scene $(LDFLAGS)
 
-clean: ; rm -f *.o
+.c: ; $(CC) $@.c -o $@ $(LDFLAGS)
+
+clean: ; rm -f scene

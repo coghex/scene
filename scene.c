@@ -23,7 +23,7 @@ int fov=55;       // Field of view (for perspective)
 double asp=1;     // Aspect ratio
 double dim=5.0;   // Size of world
 double lx = 0, ly = 0;    // Perspective angle
-double camx = 0, camy = 0, camz = 0; // Camera Location
+double camx = 0, camy = 1, camz = 0; // Camera Location
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
@@ -32,6 +32,14 @@ double camx = 0, camy = 0, camz = 0; // Camera Location
 // This was written by the professor
 // Convenience routine to output raster text
 // Use VARARGS to make this more flexible
+
+struct snow
+{
+	GLfloat x,y,z;
+	GLfloat r,g,b;
+	GLfloat xd,yd,zd;
+	GLfloat cs;
+} s[10000];
 
 #define LEN 8192  // Maximum length of text string
 void Print(const char* format , ...)
@@ -68,7 +76,6 @@ static void cone(double x, double y, double z,
                      double dx, double dy, double dz,
                      double th) {
   GLfloat l,m,angle;
-  int piv = 1;
   glPushMatrix();
   glTranslated(x,y,z);
   glRotated(th,1,0,0);
@@ -135,20 +142,50 @@ static void cylinder(double x, double y, double z,
   }
   glPopMatrix();
 }
+void drawGround(void)
+{
+  GLfloat fExtent = 20.0f;
+  GLfloat fStep = 1.0f;
+  GLfloat y = -0.4f; 
+  GLfloat iStrip, iRun;
 
+  glColor3f(0.8f, .8f, 1.0f);
+  for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
+	{
+	  glBegin(GL_TRIANGLE_STRIP);
+	  glNormal3f(0.0f, 1.0f, 0.0f);
+
+	  for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
+		{
+		  glVertex3f(iStrip, y, iRun);
+		  glVertex3f(iStrip + fStep, y, iRun);
+		}
+	  glEnd();
+	}
+}
 void tree(double x, double y, double z,
           double dx, double dy, double dz,
-          double th) {
+          double th, int br) {
+  int i;
+  glPushMatrix();
+
   glTranslated(x,y,z);
   glRotated(th,0,0,1);
   glScaled(dx,dy,dz);
 
   glColor3f(.55, .27, .07);
   cylinder(0, .1, 0, .12, .25, .12, 0);
-  glColor3f(0, .3, 0);
-  cone(0, .25, 0, .2, .2, .2, 270);
-  cone(0, .6, 0, .2, .2, .2, 270);
+
+  for (i = 0; i < br; i++) {
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    glColor3f(0, 0, 0);
+    cone(0, .25*i, 0, .2, .2, .2, 270);
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    glColor3f(0, .3, 0);
+    cone(0, .25*i, 0, .2, .2, .2, 270);  }
+  glPopMatrix();
 }
+
 // Display Routine
 void display()
 {
@@ -160,20 +197,21 @@ void display()
   // Undo previous transformations
   glLoadIdentity();
   // Set view angle
-  double Ex = -2*dim*Sin(th)*Cos(ph) + camx;
+  double Ex = -2*dim*Sin(th)*Cos(ph) + camx*Cos(lx) + camz*Sin(lx);
   double Ey = +2*dim        *Sin(ph) + camy;
-  double Ez = +2*dim*Cos(th)*Cos(ph) + camz;
+  double Ez = +2*dim*Cos(th)*Cos(ph) + camz*Cos(lx) + camx*Sin(lx);
   gluLookAt(Ex,Ey,Ez , lx + camx,ly + camy, camz, 0,Cos(ph),0);
   // Decide what to draw
-
-  tree(-0.9, 0, 0, 1, 1, 1, 0);
-  tree(-1.1, 0, .4, 1, 1, 1, 0);
-  tree(-1, 0, .5, 1, 1, 1, 0);
-  tree(1, 0, .2, 1, 1, 1, 0);
-  tree(1, 0, .3, 1, 1, 1, 0);
-  tree(1.1, 0, .5, 1, 1, 1, 0);
-  tree(1, 1, 1, 0.2, 0.2, 0.2, 45);
-
+  // shows in wireframe
+  //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+  tree(-4, 0, 2, 1, 1, 1, 0, 2);
+  tree(-1.1, 0, 1, 1, 1, 1, 0, 5);
+  tree(-3, 0, -4, 1, 1, 1, 0, 3);
+  tree(1, 0, .2, 1, 1, 1, 0, 2);
+  tree(3, 0, -4, 1, 1, 1, 0, 4);
+  tree(5, 0, 3, 1, 1, 1, 0, 2);
+  tree(0, 0, 0, 0.2, 0.2, 0.2, 45, 2);
+  drawGround();
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -184,19 +222,15 @@ void display()
 void special(int key,int x,int y)
 {
   switch (key) {
-    // Right arrow key - increase angle by 5 degrees
     case(GLUT_KEY_RIGHT):
       lx += 0.2;
       break;
-    // Left arrow key - decrease angle by 5 degrees
     case(GLUT_KEY_LEFT):
       lx -= 0.2;
       break;
-    // Up arrow key - increase elevation by 5 degrees
     case(GLUT_KEY_UP):
       ly += 0.2;
       break;
-    // Down arrow key - decrease elevation by 5 degrees
     case(GLUT_KEY_DOWN):
       ly -= 0.2;
       break;

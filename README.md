@@ -13,6 +13,7 @@ there is a tiny little tree floating at a 45 degree
 angle, it looks rediculous.
 
 to compile, go into the directory and enter:
->make clean && make lorenz
-this will output lorenz.o, then:
->./lorenz.o
+>make
+
+this will output scene, then:
+>./scene
