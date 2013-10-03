@@ -16,7 +16,6 @@
 #endif
 
 int axes=1;       // Display axes
-int mode=1;       // What to display
 int fov=55;       // Field of view (for perspective)
 double asp=2;     // Aspect ratio
 double dim=5.0;   // Size of world
@@ -54,11 +53,7 @@ static void Project()
   glMatrixMode(GL_PROJECTION);
   // Undo previous transformations
   glLoadIdentity();
-  if (mode)
-    gluPerspective(fov,asp,dim/4,4*dim);
-  // Orthogonal projection
-  else
-    glOrtho(-asp*dim,+asp*dim, -dim,+dim, -dim,+dim);
+  gluPerspective(fov,asp,dim/4,4*dim);
   //  Switch to manipulating the model matrix
   glMatrixMode(GL_MODELVIEW);
   //  Undo previous transformations
@@ -196,17 +191,7 @@ void display()
   vy = ly;
   vz = sin(lx);
 
-  if (mode)
-  {
-    // Set view angle
-    gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
-  }
-  else
-  {
-    glRotated(ly*3+4, 1, 0, 0);
-    glRotated(lx*3, 0, 1, 0);
-    glTranslated(-camz, -camy, -camx);
-  }
+  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
 
   // Decide what to draw
   // shows in wireframe
@@ -270,18 +255,6 @@ void key(unsigned char ch,int x,int y)
     case('-'):
       if(ch>1)
         fov--;
-      break;
-    case('m'):
-      mode = !mode;
-      if (mode == 0){
-        camx = camz = 0;
-        lx = ly = 0;
-        fov = 55;
-      } else {
-        camx = -15;
-        camy = 1;
-        camz = 0;
-      }
       break;
     case('w'):
       camx += vx*0.3;
