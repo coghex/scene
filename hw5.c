@@ -26,15 +26,18 @@ double vx = 0, vy = 0, vz = 0; // viewing direction
 // Light values
 int distance  =   10;  // Light distance
 int local     =   0;  // Local Viewer Model
-int ambient   =  30;  // Ambient intensity (%)
+int ambient   =  50;  // Ambient intensity (%)
 int diffuse   =  70;  // Diffuse intensity (%)
 int specular  =  10;  // Specular intensity (%)
-int shininess = 256;  // Shininess (power of two)
-float shinyvec[1];    // Shininess (value)
+float shinyvec[3];    // Shininess (value)
 int zh        =  75;  // Light azimuth
 float ylight  =   4;  // Elevation of light
-double count  =   0;
-int pause     =   0;
+double count  =   180;
+int pause     =   1;
+
+// Texture stuff
+unsigned int texture[2];
+double rep = 1;
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
@@ -59,6 +62,115 @@ void Print(const char* format , ...)
     glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
 }
 
+/*
+ *  Reverse n bytes
+ */
+static void Reverse(void* x,const int n)
+{
+   int k;
+   char* ch = (char*)x;
+   for (k=0;k<n/2;k++)
+   {
+      char tmp = ch[k];
+      ch[k] = ch[n-1-k];
+      ch[n-1-k] = tmp;
+   }
+}
+
+// All this code loads the BMP image, it can be found in the CSCIx229 library
+void ErrCheck(const char* where)
+{
+   int err = glGetError();
+   if (err) fprintf(stderr,"ERROR: %s [%s]\n",gluErrorString(err),where);
+}
+
+void Fatal(const char* format , ...)
+{
+   va_list args;
+   va_start(args,format);
+   vfprintf(stderr,format,args);
+   va_end(args);
+   exit(1);
+}
+
+unsigned int LoadTexBMP(const char* file)
+{
+   unsigned int   texture;    // Texture name
+   FILE*          f;          // File pointer
+   unsigned short magic;      // Image magic
+   unsigned int   dx,dy,size; // Image dimensions
+   unsigned short nbp,bpp;    // Planes and bits per pixel
+   unsigned char* image;      // Image data
+   unsigned int   k;          // Counter
+   int            max;        // Maximum texture dimensions
+
+   //  Open file
+   f = fopen(file,"rb");
+   if (!f) Fatal("Cannot open file %s\n",file);
+   //  Check image magic
+   if (fread(&magic,2,1,f)!=1) Fatal("Cannot read magic from %s\n",file);
+   if (magic!=0x4D42 && magic!=0x424D) Fatal("Image magic not BMP in %s\n",file);
+   //  Seek to and read header
+   if (fseek(f,16,SEEK_CUR) || fread(&dx ,4,1,f)!=1 || fread(&dy ,4,1,f)!=1 ||
+       fread(&nbp,2,1,f)!=1 || fread(&bpp,2,1,f)!=1 || fread(&k,4,1,f)!=1)
+     Fatal("Cannot read header from %s\n",file);
+   //  Reverse bytes on big endian hardware (detected by backwards magic)
+   if (magic==0x424D)
+   {
+      Reverse(&dx,4);
+      Reverse(&dy,4);
+      Reverse(&nbp,2);
+      Reverse(&bpp,2);
+      Reverse(&k,4);
+   }
+   //  Check image parameters
+   glGetIntegerv(GL_MAX_TEXTURE_SIZE,&max);
+   if (dx<1 || dx>max) Fatal("%s image width %d out of range 1-%d\n",file,dx,max);
+   if (dy<1 || dy>max) Fatal("%s image height %d out of range 1-%d\n",file,dy,max);
+   if (nbp!=1)  Fatal("%s bit planes is not 1: %d\n",file,nbp);
+   if (bpp!=24) Fatal("%s bits per pixel is not 24: %d\n",file,bpp);
+   if (k!=0)    Fatal("%s compressed files not supported\n",file);
+#ifndef GL_VERSION_2_0
+   //  OpenGL 2.0 lifts the restriction that texture size must be a power of two
+   for (k=1;k<dx;k*=2);
+   if (k!=dx) Fatal("%s image width not a power of two: %d\n",file,dx);
+   for (k=1;k<dy;k*=2);
+   if (k!=dy) Fatal("%s image height not a power of two: %d\n",file,dy);
+#endif
+
+   //  Allocate image memory
+   size = 3*dx*dy;
+   image = (unsigned char*) malloc(size);
+   if (!image) Fatal("Cannot allocate %d bytes of memory for image %s\n",size,file);
+   //  Seek to and read image
+   if (fseek(f,20,SEEK_CUR) || fread(image,size,1,f)!=1) Fatal("Error reading data from image %s\n",file);
+   fclose(f);
+   //  Reverse colors (BGR -> RGB)
+   for (k=0;k<size;k+=3)
+   {
+      unsigned char temp = image[k];
+      image[k]   = image[k+2];
+      image[k+2] = temp;
+   }
+
+   //  Sanity check
+   ErrCheck("LoadTexBMP");
+   //  Generate 2D texture
+   glGenTextures(1,&texture);
+   glBindTexture(GL_TEXTURE_2D,texture);
+   //  Copy image
+   glTexImage2D(GL_TEXTURE_2D,0,3,dx,dy,0,GL_RGB,GL_UNSIGNED_BYTE,image);
+   if (glGetError()) Fatal("Error in glTexImage2D %s %dx%d\n",file,dx,dy);
+   //  Scale linearly when image size doesn't match
+   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+   //  Free image memory
+   free(image);
+   //  Return texture name
+   return texture;
+}
+
 // sets the projection.  Written by professor
 static void Project()
 {
@@ -77,9 +189,13 @@ static void Project()
 static void cone(double x, double y, double z,
                      double dx, double dy, double dz,
                      double th) {
-  GLfloat l,m,angle;
+  //GLfloat l,m,angle;
   float white[] = {1,1,1,1};
   float black[] = {0,0,0,1};
+  double nfaces = 32;
+  double i;
+  double len = 0.8;
+  double rad = 0.8;
 
   glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
   glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
@@ -91,31 +207,18 @@ static void cone(double x, double y, double z,
   glScaled(dx,dy,dz);
 
   glBegin(GL_TRIANGLE_FAN);
-  glVertex3f(0.0f, 0.0f, 3.0f);
-
-  for(angle = 0.0f; angle <= (2.0f*M_PI) + (M_PI/8.0f); angle += (M_PI/8.0f))
-    {
-    glNormal3f(cos(angle-M_PI/2), 0.666667, sin(angle-M_PI/2));
-    // x and y of next vertex
-    l = 2.0f*sin(angle);
-    m = 2.0f*cos(angle);
-    // next vertex for the triangle fan
-    glVertex2f(l, m);
-    }
+  glTexCoord2f(0.0f, 0.0f);
+  glTexCoord2f(0.0f, 1.0f);
+  glVertex3f(0, 1, 0);
+  for (i = 0; i <= 1.1; i += 1.0/nfaces) {
+    float radians = i*M_PI*2.0f;
+    float cr = cos(radians);
+    float sr = sin(radians);
+    glNormal3f(cr, 0.6667f, sr);
+    glTexCoord2f(1.0, i);
+    glVertex3f(rad*cr, 1-len, rad*sr);
+  }
   glEnd();
-
-  // Now for the bottom. (another cone of height 0 off the bottom)
-  glBegin(GL_TRIANGLE_FAN);
-  glVertex2f(0.0f, 0.0f);
-  for(angle = 0.0f; angle <= (2.0f*M_PI) + (M_PI/8.0f); angle += (M_PI/8.0f))
-    {
-    glNormal3f(0, -1, 0);
-    l = 2.0f*sin(angle);
-    m = 2.0f*cos(angle);
-    glVertex2f(m, l);
-    }
-  glEnd();
-
   glPopMatrix();
 }
 
@@ -130,28 +233,31 @@ static void cylinder(double x, double y, double z,
   glRotated(th,0,1,0);
   glScaled(dx,dy,dz);
 
-  float radius = 1;
-  float halfLength = 2;
-  int slices = 200;
-  int i;
+  float white[] = {1,1,1,1};
+  float black[] = {0,0,0,1};
 
-  // code was modified from an anonymous blog post
-  for(i=0; i<slices; i++) {
-    float theta = ((float)i)*2.0*M_PI;
-    float nextTheta = ((float)i+1)*2.0*M_PI;
-    glBegin(GL_TRIANGLE_STRIP);
-    glNormal3f(Cos(theta), 0.0f, Sin(theta));
-    // vertex at middle of end
-    glVertex3f(0.0, halfLength, 0.0);
-    // vertices at edges of circle
-    glVertex3f(radius*Cos(theta), halfLength, radius*Sin(theta));
-    glVertex3f (radius*Cos(nextTheta), halfLength, radius*Sin(nextTheta));
-    // the same vertices at the bottom of the cylinder
-    glVertex3f (radius*Cos(nextTheta), -halfLength, radius*Sin(nextTheta));
-    glVertex3f(radius*Cos(theta), -halfLength, radius*Sin(theta));
-    glVertex3f(0.0, -halfLength, 0.0);
-    glEnd();
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
+
+  int epsilon = 1.0f;
+  float angle;
+  int nfaces = 20;
+  int len = 4;
+
+  glBegin(GL_TRIANGLE_STRIP);
+  for(angle = 0.0f; angle <= 1.0f+epsilon; angle += 1.0f/nfaces)
+  {
+    float radians = angle*M_PI*2.0f;
+    float cr = cos(radians);
+    float sr = sin(radians);
+    glNormal3f(cr, 0.0f, sr);
+    glTexCoord2f(1.0f, angle);
+    glVertex3f(cr, len*0.5f, sr);
+    glTexCoord2f(0.0f, angle);
+    glVertex3f(cr, len*-0.5f, sr);
   }
+  glEnd();
   glPopMatrix();
 }
 
@@ -160,28 +266,28 @@ void drawGround(void)
 {
   float white[] = {1,1,1,1};
   float black[] = {0,0,0,1};
+  float i, j;
+  float y = -0.4;
   glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
   glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
   glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
 
-  GLfloat fExtent = 20.0f;
-  GLfloat fStep = 1.0f;
-  GLfloat y = -0.4f; 
-  GLfloat iStrip, iRun;
+  GLfloat length = 40.0f;
+  GLfloat width = 40.0f;
+  GLfloat step = 20.0f;
 
   glColor3f(0.8f, .8f, 1.0f);
-  for(iStrip = -fExtent; iStrip <= fExtent; iStrip += fStep)
-	{
-	  glBegin(GL_TRIANGLE_STRIP);
-	  glNormal3f(0.0f, 1.0f, 0.0f); // All teh normals face up
-
-	  for(iRun = fExtent; iRun >= -fExtent; iRun -= fStep)
-		{
-		  glVertex3f(iStrip, y, iRun);
-		  glVertex3f(iStrip + fStep, y, iRun);
-		}
-	  glEnd();
-	}
+  for(i = -length; i < length; i += step/length){
+    for(j = -width; j < width; j += step/width) {
+      glBegin(GL_POLYGON);
+      glNormal3f(0.0, 1.0, 0.0);
+      glTexCoord2d(0,0);glVertex3f(i,y,j);
+      glTexCoord2d(0,1);glVertex3f(i,y,j+step/width+0.2);
+      glTexCoord2d(1,1);glVertex3f(i+step/length+0.2,y,j+step/width+0.2);
+      glTexCoord2d(1,0);glVertex3f(i+step/length+0.2,y,j);
+      glEnd();
+    }
+  }
 }
 
 void tree(double x, double y, double z,
@@ -196,24 +302,34 @@ void tree(double x, double y, double z,
   glScaled(dx,dy,dz);
 
   glColor3f(.55, .27, .07);
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture[1]);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   cylinder(0, .1, 0, .12, .25, .12, 0);
-
+  glDisable(GL_TEXTURE_2D);
   for (i = 0; i < br; i++) {
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-    glColor3f(0, 0, 0);
-    cone(0, .25*i, 0, .2, .2, .2, 270);
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-    glColor3f(0, .3, 0);
-    cone(0, .25*i, 0, .2, .2, .2, 270);  }
+    glColor3f(0, 1, 0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D,texture[2]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    cone(0, .25*i, 0, .6, .6, .6, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
   glPopMatrix();
 }
 // Display Routine
 void display()
 {
+  shinyvec[0] = 2;
+  shinyvec[1] = 256;
   // Erase the window and the depth buffer
+  glClearColor(0.1, 0.5, 0.7, 1.0);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   // Enable Z-buffering in OpenGL
   glEnable(GL_DEPTH_TEST);
+  glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
 
   // Undo previous transformations
   glLoadIdentity();
@@ -258,8 +374,14 @@ void display()
   tree(3, 0, -4, 1, 1, 1, 0, 4);
   tree(5, 0, 3, 1, 1, 1, 0, 2);
   tree(0, 0, 0, 0.2, 0.2, 0.2, 45, 2);
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture[0]);
+  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   drawGround();
-
+  glDisable(GL_TEXTURE_2D);
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -385,8 +507,11 @@ int main(int argc,char* argv[])
   // Tell GLUT to call "key" when a key is pressed
   glutKeyboardFunc(key);
   glutTimerFunc(25, update, 0);
+  // Load Textures
+  texture[0] = LoadTexBMP("snow.bmp");
+  texture[1] = LoadTexBMP("bark.bmp");
+  texture[2] = LoadTexBMP("tree.bmp");
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();
   return 0;
 }
-
