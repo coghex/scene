@@ -16,13 +16,9 @@ In order to satisfy the requirements of the assignment
 there is a tiny little tree floating at a 45 degree
 angle, it looks ridiculous.
 
-The textures need to be in the sam directory at
-compilation
-
 to compile, go into the directory and enter:
 >make
 
-this will output hw7, then:
->./hw7
+this will output scene, then:
+>./scene
 
-This Assignment took me ~10 hours to complete
