@@ -37,7 +37,6 @@ int pause     =   1;
 GLfloat tc1 = 1;
 GLfloat tc0 = 0;
 
-
 // Texture stuff
 unsigned int texture[8];
 double rep = 1;
