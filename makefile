@@ -8,8 +8,8 @@ ifeq ($(UNAME), Darwin)
 	LDFLAGS=-framework OpenGL -framework GLUT -Wall
 endif
 
-all: ; $(CC) hw5.c -o hw5 $(LDFLAGS)
+all: ; $(CC) scene.c -o scene $(LDFLAGS)
 
 .c: ; $(CC) $@.c -o $@ $(LDFLAGS)
 
-clean: ; rm -f hw5
+clean: ; rm -f scene
