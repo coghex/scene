@@ -23,19 +23,28 @@ double lx = 0, ly = 0;    // Perspective angle
 double camx = -15, camy = 1, camz = 0; // Camera Location
 double vx = 0, vy = 0, vz = 0; // viewing direction
 
+int width = 600;
+int height = 600;
+
 // Light values
-int distance  =   10;  // Light distance
+int distance  =   20;  // Light distance
 int local     =   0;  // Local Viewer Model
 int ambient   =  50;  // Ambient intensity (%)
-int diffuse   =  70;  // Diffuse intensity (%)
+int diffuse   =  60;  // Diffuse intensity (%)
 int specular  =  10;  // Specular intensity (%)
 float shinyvec[3];    // Shininess (value)
 int zh        =  75;  // Light azimuth
-float ylight  =   4;  // Elevation of light
-double count  =   180;
+float ylight  =   10;  // Elevation of light
+double count  =   75;
 int pause     =   1;
 GLfloat tc1 = 1;
 GLfloat tc0 = 0;
+
+// fog stuff
+GLuint filter;                      // Which Filter To Use
+GLuint fogMode[]= { GL_EXP, GL_EXP2, GL_LINEAR };   // Storage For Three Types Of Fog
+GLuint fogfilter= 1;                    // Which Fog To Use
+GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};  
 
 // Texture stuff
 unsigned int texture[8];
@@ -203,35 +212,35 @@ int LoadGLTextures()
     switch(loop)
     {
       case 0:
-        LoadBMP("tex/snow.bmp", TextureImage);
+        LoadBMP("data/tex/snow.bmp", TextureImage);
         break;
 
       case 1:
-        LoadBMP("tex/bark.bmp", TextureImage);
+        LoadBMP("data/tex/bark.bmp", TextureImage);
         break;
 
       case 2:
-        LoadBMP("tex/tree.bmp", TextureImage);
+        LoadBMP("data/tex/tree.bmp", TextureImage);
         break;
 
       case 3:
-        LoadBMP("sb/bk.bmp", TextureImage);
+        LoadBMP("data/sb/bk.bmp", TextureImage);
         break;
 
       case 4:
-        LoadBMP("sb/ft.bmp", TextureImage);
+        LoadBMP("data/sb/ft.bmp", TextureImage);
         break;
 
       case 5:
-        LoadBMP("sb/lf.bmp", TextureImage);
+        LoadBMP("data/sb/lf.bmp", TextureImage);
         break;
 
       case 6:
-        LoadBMP("sb/rt.bmp", TextureImage);
+        LoadBMP("data/sb/rt.bmp", TextureImage);
         break;
 
       case 7:
-        LoadBMP("sb/up.bmp", TextureImage);
+        LoadBMP("data/sb/up.bmp", TextureImage);
         break;
 
   }
@@ -474,34 +483,15 @@ void dooohmmmme(float x, float y, float z, float len) {
   }
 }
 
-// Display Routine
-void display()
+void lettherebelight(void)
 {
   shinyvec[0] = 2;
-  shinyvec[1] = 256;
-  // Erase the window and the depth buffer
-  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-  // Enable Z-buffering in OpenGL
-  glEnable(GL_DEPTH_TEST);
-  glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
-
-  // Undo previous transformations
-  glLoadIdentity();
-  vx = cos(lx);
-  vy = ly;
-  vz = sin(lx);
-
-  // This is the professor's code
-  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
-  glShadeModel(GL_SMOOTH);
-  // Translate intensity to color vectors
+  shinyvec[1] = 2;
   float Ambient[]   = {0.01*ambient ,0.01*ambient ,0.01*ambient ,1.0};
   float Diffuse[]   = {0.01*diffuse ,0.01*diffuse ,0.01*diffuse ,1.0};
   float Specular[]  = {0.01*specular,0.01*specular,0.01*specular,1.0};
-  // Light position
   float Position[]  = {distance*Cos(count),ylight,distance*Sin(count),1.0};
-  // OpenGL should normalize normal vectors
-  glEnable(GL_NORMALIZE);
+
   // Enable lighting
   glEnable(GL_LIGHTING);
   // Location of viewer for specular calculations
@@ -517,9 +507,45 @@ void display()
   glLightfv(GL_LIGHT0,GL_SPECULAR,Specular);
   glLightfv(GL_LIGHT0,GL_POSITION,Position);
 
+}
 
-  // Decide what to draw
-  dooohmmmme(camx, camy, camz, 20);
+void fog(void) {
+  glClearColor(0.5f,0.5f,0.5f,1.0f);          // We'll Clear To The Color Of The Fog ( Modified )
+
+  glFogi(GL_FOG_MODE, fogMode[fogfilter]);        // Fog Mode
+  glFogfv(GL_FOG_COLOR, fogColor);            // Set Fog Color
+  glFogf(GL_FOG_DENSITY, 0.07f);              // How Dense Will The Fog Be
+  glHint(GL_FOG_HINT, GL_DONT_CARE);          // Fog Hint Value
+  glFogf(GL_FOG_START, 10.0f);             // Fog Start Depth
+  glFogf(GL_FOG_END, 50.0f);               // Fog End Depth
+  glEnable(GL_FOG);                   // Enables GL_FOG
+}
+
+// Display Routine
+void display()
+{
+  // Erase the window and the depth buffer
+  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+  // Enable Z-buffering in OpenGL
+  glEnable(GL_DEPTH_TEST);
+  glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
+
+  // Undo previous transformations
+  glLoadIdentity();
+  vx = cos(lx);
+  vy = ly;
+  vz = sin(lx);
+
+  // This is the professor's code
+  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
+  glShadeModel(GL_SMOOTH);
+  // OpenGL should normalize normal vectors
+  glEnable(GL_NORMALIZE);
+
+  lettherebelight();
+  fog();
+  dooohmmmme(camx, camy, camz, 10);
+
   // shows in wireframe
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
   tree(-4, 0, 2, 1, 1, 1, 0, 2);
@@ -646,7 +672,7 @@ int main(int argc,char* argv[])
   // Initialize GLUT and process user parameters
   glutInit(&argc,argv);
   // Request double buffered, true color window with Z buffering at 600x600
-  glutInitWindowSize(600,600);
+  glutInitWindowSize(width,height);
   glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
   // Create the window
   glutCreateWindow("Happy Little Trees (Vince Coghlan)");

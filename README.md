@@ -16,6 +16,8 @@ In order to satisfy the requirements of the assignment
 there is a tiny little tree floating at a 45 degree
 angle, it looks ridiculous.
 
+I go the textures for the sky from http://www.hazelwhorley.com/textures.html
+
 to compile, go into the directory and enter:
 >make
 
