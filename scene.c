@@ -1,6 +1,5 @@
-
 // Author: Vince Coghlan (vince.coghlan@colorado.edu)
-// Date: 10/10/13
+// Date: 11/3/13
 // Description: This is a 3d scene of some happy little trees
 
 #include <stdio.h>
@@ -15,7 +14,6 @@
 #include <GL/glut.h>
 #endif
 
-int axes=1;       // Display axes
 int fov=55;       // Field of view (for perspective)
 double asp=2;     // Aspect ratio
 double dim=5.0;   // Size of world
@@ -65,42 +63,11 @@ typedef struct Texture Texture;
 #define Cos(x) (cos((x)*3.1415927/180))
 #define Sin(x) (sin((x)*3.1415927/180))
 
-// This was written by the professor
-// Convenience routine to output raster text
-// Use VARARGS to make this more flexible
-
-#define LEN 8192  // Maximum length of text string
-void Print(const char* format , ...)
-{
-  char    buf[LEN];
-  char*   ch=buf;
-  va_list args;
-  // Turn the parameters into a character string
-  va_start(args,format);
-  vsnprintf(buf,LEN,format,args);
-  va_end(args);
-  // Display the characters one at a time at the current raster position
-  while (*ch)
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
-}
-
-void ErrCheck(const char* where)
-{
-   int err = glGetError();
-   if (err) fprintf(stderr,"ERROR: %s [%s]\n",gluErrorString(err),where);
-}
-
-void Fatal(const char* format , ...)
-{
-   va_list args;
-   va_start(args,format);
-   vfprintf(stderr,format,args);
-   va_end(args);
-   exit(1);
-}
-
 // This function has been taken from http://nehe.gamedev.net/ and
 // modified to work on my computer, I hope it works on your's too!
+// This is because my method af editing bmp image (GIMP on macbook)
+// generates bmp images with unusual headers.  This should work with
+// the images that come with the source.
 int LoadBMP(char *szFilename, Texture *pTexture)
 {
 //  Texture *pTexture;
@@ -200,7 +167,7 @@ int LoadBMP(char *szFilename, Texture *pTexture)
   return 1;
 }
 
-// Load Bitmaps And Convert To Textures
+// Load Bitmaps And Convert To Textures, code also inspired by nehe gamedev
 int LoadGLTextures()
 {
   // Load Texture
@@ -214,14 +181,17 @@ int LoadGLTextures()
   {
     switch(loop)
     {
+      // image from http://en.pudn.com/downloads72/sourcecode/windows/opengl/detail262399_en.html
       case 0:
         LoadBMP("data/tex/snow.bmp", TextureImage);
         break;
 
+      // image is from http://www.turbosquid.com/FullPreview/Index.cfm/ID/417496
       case 1:
         LoadBMP("data/tex/bark.bmp", TextureImage);
         break;
 
+      // image is from http://www.123rf.com/photo_4835333_vibrant-green-tree-leaves-texture.html
       case 2:
         LoadBMP("data/tex/tree.bmp", TextureImage);
         break;
@@ -266,12 +236,14 @@ int LoadGLTextures()
   return 1;                                   // Return The Status
 }
 
+// uses the same apporach as NeHe but for an RGB tga file
 void loadterrain() {
   FILE *filePointer;
   unsigned long iCount;
   unsigned char rgbmap[128][128*3];
   int i, j;
   // make sure the file is there.
+  // I found this file at http://www.lighthouse3d.com/opengl/terrain/
   if ((filePointer = fopen("data/terrain/ter.tga", "rb"))==NULL)
   {
     printf("File Not Found : ter.tga");
@@ -314,8 +286,8 @@ static void Project()
   //  Undo previous transformations
   glLoadIdentity();
 }
-// A function to draw a cone.  Altered from code from
-// an anonymous blog post
+
+// A function to draw a cone.
 static void cone(double x, double y, double z,
                      double dx, double dy, double dz,
                      double th) {
@@ -391,6 +363,7 @@ static void cylinder(double x, double y, double z,
   glPopMatrix();
 }
 
+// gets the height at that point in the terrain
 double getheight(double x, double z) {
   double a = x/0.4+64;
   double b = z/0.4+64;
@@ -398,6 +371,9 @@ double getheight(double x, double z) {
   return 0.01*map[(int)a][(int)b] - 1;
 }
 
+// draws the ground in strips, the idea came from 
+// http://www.lighthouse3d.com/opengl/terrain/ but I do
+// it in a different way
 void drawGround(unsigned char map[128][128])
 {
   int i, j;
@@ -412,31 +388,6 @@ void drawGround(unsigned char map[128][128])
     glEnd();
   }
 
-
- /* float white[] = {1,1,1,1};*/
-  /*float black[] = {0,0,0,1};*/
-  /*float i, j;*/
-  /*float y = -0.4;*/
-  /*glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);*/
-  /*glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);*/
-  /*glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);*/
-
-  /*GLfloat length = 40.0f;*/
-  /*GLfloat width = 40.0f;*/
-  /*GLfloat step = 20.0f;*/
-
-  /*glColor3f(0.8f, .8f, 1.0f);*/
-  /*for(i = -length; i < length; i += step/length){*/
-    /*for(j = -width; j < width; j += step/width) {*/
-      /*glBegin(GL_POLYGON);*/
-      /*glNormal3f(0.0, 1.0, 0.0);*/
-      /*glTexCoord2d(0,0);glVertex3f(i,y,j);*/
-      /*glTexCoord2d(0,1);glVertex3f(i,y,j+step/width+0.2);*/
-      /*glTexCoord2d(1,1);glVertex3f(i+step/length+0.2,y,j+step/width+0.2);*/
-      /*glTexCoord2d(1,0);glVertex3f(i+step/length+0.2,y,j);*/
-      /*glEnd();*/
-    /*}*/
-  /*}*/
 }
 
 void tree(double x, double y, double z,
@@ -469,6 +420,9 @@ void tree(double x, double y, double z,
   glPopMatrix();
 }
 
+// creates a skybox and textures it, inspired by some code I
+// found online and can no longer find. the texture came from
+// http://www.hazelwhorley.com/textures.html
 void dooohmmmme(float x, float y, float z, float len) {
   int i;
   x = x - len / 2;
@@ -541,6 +495,7 @@ void dooohmmmme(float x, float y, float z, float len) {
   }
 }
 
+// lighting
 void lettherebelight(void)
 {
   shinyvec[0] = 2;
@@ -567,6 +522,7 @@ void lettherebelight(void)
 
 }
 
+// basic fog, some code from nehe.gamedev.net
 void fog(void) {
   glClearColor(0.5f,0.5f,0.5f,1.0f);          // We'll Clear To The Color Of The Fog ( Modified )
 
@@ -594,6 +550,7 @@ void display()
   vy = ly;
   vz = sin(lx);
 
+  // positions the camera based on the terrain
   camy = getheight(camz, camx) + 1;
 
   // This is the professor's code

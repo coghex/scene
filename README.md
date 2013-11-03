@@ -12,11 +12,10 @@ you can move the light along its circular path
 using the q and e keys.  space again will resume
 the automatic light spinning.
 
-In order to satisfy the requirements of the assignment
-there is a tiny little tree floating at a 45 degree
-angle, it looks ridiculous.
-
-I go the textures for the sky from http://www.hazelwhorley.com/textures.html
+all textures are cited in the code and taken from
+people who are allowing users to use them for non
+commercial purposes.  Many of them were edited
+slightly by myself in order to look better.
 
 to compile, go into the directory and enter:
 >make
