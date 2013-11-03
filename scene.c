@@ -40,6 +40,9 @@ int pause     =   1;
 GLfloat tc1 = 1;
 GLfloat tc0 = 0;
 
+// Terrain stuff
+unsigned char map[128][128];
+
 // fog stuff
 GLuint filter;                      // Which Filter To Use
 GLuint fogMode[]= { GL_EXP, GL_EXP2, GL_LINEAR };   // Storage For Three Types Of Fog
@@ -243,6 +246,7 @@ int LoadGLTextures()
         LoadBMP("data/sb/up.bmp", TextureImage);
         break;
 
+
   }
     glBindTexture(GL_TEXTURE_2D, texture[loop]);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
@@ -260,6 +264,41 @@ int LoadGLTextures()
   }
 
   return 1;                                   // Return The Status
+}
+
+void loadterrain() {
+  FILE *filePointer;
+  unsigned long iCount;
+  unsigned char rgbmap[128][128*3];
+  int i, j;
+  // make sure the file is there.
+  if ((filePointer = fopen("data/terrain/ter.tga", "rb"))==NULL)
+  {
+    printf("File Not Found : ter.tga");
+    exit(0);
+  }
+  fseek(filePointer, 12, SEEK_CUR);
+
+  char buf[4];
+  // read the width and height
+  if ((iCount = fread(buf, 4, 1, filePointer)) != 1) {
+    printf("Error reading width from terr.tga");
+    exit(0);
+  }
+
+  fseek(filePointer, 2, SEEK_CUR);
+
+  for(i = 0; i<128; i++) {
+    if ((iCount = fread(rgbmap[i], 128*3, 1, filePointer)) != 1) {
+      printf("Error reading width from terr.tga");
+      exit(0);
+    }
+  }
+  for(i = 0; i<128; i++) {
+    for(j = 0; j<128; j++) {
+      map[i][j] =  rgbmap[i][3*j];
+    }
+  }
 }
 
 // sets the projection.  Written by professor
@@ -352,33 +391,52 @@ static void cylinder(double x, double y, double z,
   glPopMatrix();
 }
 
-// This was also taken from an anonymous blog post
-void drawGround(void)
+double getheight(double x, double z) {
+  double a = x/0.4+64;
+  double b = z/0.4+64;
+
+  return 0.01*map[(int)a][(int)b] - 1;
+}
+
+void drawGround(unsigned char map[128][128])
 {
-  float white[] = {1,1,1,1};
-  float black[] = {0,0,0,1};
-  float i, j;
-  float y = -0.4;
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
+  int i, j;
 
-  GLfloat length = 40.0f;
-  GLfloat width = 40.0f;
-  GLfloat step = 20.0f;
-
-  glColor3f(0.8f, .8f, 1.0f);
-  for(i = -length; i < length; i += step/length){
-    for(j = -width; j < width; j += step/width) {
-      glBegin(GL_POLYGON);
-      glNormal3f(0.0, 1.0, 0.0);
-      glTexCoord2d(0,0);glVertex3f(i,y,j);
-      glTexCoord2d(0,1);glVertex3f(i,y,j+step/width+0.2);
-      glTexCoord2d(1,1);glVertex3f(i+step/length+0.2,y,j+step/width+0.2);
-      glTexCoord2d(1,0);glVertex3f(i+step/length+0.2,y,j);
-      glEnd();
+  glColor3f(1, 1, 1);
+  for (i = 0; i < 127; i++) {
+    glBegin(GL_TRIANGLE_STRIP);
+    for (j = 0; j < 127; j++) {
+      glVertex3f(0.4*(j - 64), 0.01*map[i+1][j] - 1, 0.4*(i+1 - 64));
+      glVertex3f(0.4*(j - 64), 0.01*map[i][j] - 1, 0.4*(i - 64));
     }
+    glEnd();
   }
+
+
+ /* float white[] = {1,1,1,1};*/
+  /*float black[] = {0,0,0,1};*/
+  /*float i, j;*/
+  /*float y = -0.4;*/
+  /*glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);*/
+  /*glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);*/
+  /*glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);*/
+
+  /*GLfloat length = 40.0f;*/
+  /*GLfloat width = 40.0f;*/
+  /*GLfloat step = 20.0f;*/
+
+  /*glColor3f(0.8f, .8f, 1.0f);*/
+  /*for(i = -length; i < length; i += step/length){*/
+    /*for(j = -width; j < width; j += step/width) {*/
+      /*glBegin(GL_POLYGON);*/
+      /*glNormal3f(0.0, 1.0, 0.0);*/
+      /*glTexCoord2d(0,0);glVertex3f(i,y,j);*/
+      /*glTexCoord2d(0,1);glVertex3f(i,y,j+step/width+0.2);*/
+      /*glTexCoord2d(1,1);glVertex3f(i+step/length+0.2,y,j+step/width+0.2);*/
+      /*glTexCoord2d(1,0);glVertex3f(i+step/length+0.2,y,j);*/
+      /*glEnd();*/
+    /*}*/
+  /*}*/
 }
 
 void tree(double x, double y, double z,
@@ -536,6 +594,8 @@ void display()
   vy = ly;
   vz = sin(lx);
 
+  camy = getheight(camz, camx) + 1;
+
   // This is the professor's code
   gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
   glShadeModel(GL_SMOOTH);
@@ -548,20 +608,19 @@ void display()
 
   // shows in wireframe
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-  tree(-4, 0, 2, 1, 1, 1, 0, 2);
-  tree(-1.1, 0, 1, 1, 1, 1, 0, 2);
-  tree(-3, 0, -4, 1, 1, 1, 0, 2);
-  tree(1, 0, .2, 1, 1, 1, 0, 2);
-  tree(3, 0, -4, 1, 1, 1, 0, 4);
-  tree(5, 0, 3, 1, 1, 1, 0, 2);
-  tree(0, 0, 0, 0.2, 0.2, 0.2, 45, 2);
+  tree(-4, getheight(2, -4)+0.3, 2, 1, 1, 1, 0, 2);
+  tree(-1.1, getheight(1, -1.1)+0.3, 1, 1, 1, 1, 0, 2);
+  tree(-3, getheight(-4, -3)+0.3, -4, 1, 1, 1, 0, 2);
+  tree(1, getheight(0.2, 1)+0.3, 0.2, 1, 1, 1, 0, 2);
+  tree(3, getheight(-4, 3)+0.3, -4, 1, 1, 1, 0, 4);
+  tree(5, getheight(3, 5)+0.3, 3, 1, 1, 1, 0, 2);
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture[0]);
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  drawGround();
+  drawGround(map);
   glDisable(GL_TEXTURE_2D);
   // Render the scene
   glFlush();
@@ -690,6 +749,8 @@ int main(int argc,char* argv[])
   {
     exit(0);                                // If Texture Didn't Load Return FALSE
   }
+  loadterrain();
+
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();
   return 0;
