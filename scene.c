@@ -27,9 +27,9 @@ int height = 600;
 // Light values
 int distance  =   20;  // Light distance
 int local     =   0;  // Local Viewer Model
-int ambient   =  50;  // Ambient intensity (%)
+int ambient   =  30;  // Ambient intensity (%)
 int diffuse   =  60;  // Diffuse intensity (%)
-int specular  =  10;  // Specular intensity (%)
+int specular  =  20;  // Specular intensity (%)
 float shinyvec[3];    // Shininess (value)
 int zh        =  75;  // Light azimuth
 float ylight  =   10;  // Elevation of light
@@ -38,6 +38,14 @@ int pause     =   1;
 GLfloat tc1 = 1;
 GLfloat tc0 = 0;
 
+// key pres stuff
+int apress = 0;
+int dpress = 0;
+int wpress = 0;
+int spress = 0;
+double timerad = 0;
+double timerws = 0;
+
 // Terrain stuff
 unsigned char map[128][128];
 
@@ -45,7 +53,7 @@ unsigned char map[128][128];
 GLuint filter;                      // Which Filter To Use
 GLuint fogMode[]= { GL_EXP, GL_EXP2, GL_LINEAR };   // Storage For Three Types Of Fog
 GLuint fogfilter= 1;                    // Which Fog To Use
-GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};  
+GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
 
 // Texture stuff
 unsigned int texture[8];
@@ -377,11 +385,18 @@ double getheight(double x, double z) {
 void drawGround(unsigned char map[128][128])
 {
   int i, j;
+  float white[] = {1,1,1,1};
+  float black[] = {0,0,0,1};
+
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
 
   glColor3f(1, 1, 1);
   for (i = 0; i < 127; i++) {
     glBegin(GL_TRIANGLE_STRIP);
     for (j = 0; j < 127; j++) {
+      glNormal3f(0, 1, 0);
       glVertex3f(0.4*(j - 64), 0.01*map[i+1][j] - 1, 0.4*(i+1 - 64));
       glVertex3f(0.4*(j - 64), 0.01*map[i][j] - 1, 0.4*(i - 64));
     }
@@ -551,7 +566,7 @@ void display()
   vz = sin(lx);
 
   // positions the camera based on the terrain
-  camy = getheight(camz, camx) + 1;
+  camy = getheight(camz, camx) + 1.5;
 
   // This is the professor's code
   gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
@@ -562,6 +577,7 @@ void display()
   lettherebelight();
   fog();
   dooohmmmme(camx, camy, camz, 10);
+  tree(camx+vx*M_PI, getheight(camz+vz*M_PI, camx+vx*M_PI)+0.3, camz+vz*M_PI, 1, 1, 1, 0, 2);
 
   // shows in wireframe
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -579,6 +595,7 @@ void display()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   drawGround(map);
   glDisable(GL_TEXTURE_2D);
+
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -631,18 +648,16 @@ void key(unsigned char ch,int x,int y)
       tc1 -= 0.005;
       break;
     case('w'):
-      camx += vx*0.3;
-      camz += vz*0.3;
+      wpress = 1;
       break;
     case('s'):
-      camx -= vx*0.3;
-      camz -= vz*0.3;
+      spress = 1;
       break;
     case('a'):
-      lx -= 0.1;
+      apress = 1;
       break;
     case('d'):
-      lx += 0.1;
+      dpress = 1;
       break;
     case('q'):
       if (pause) {
@@ -660,6 +675,23 @@ void key(unsigned char ch,int x,int y)
   glutPostRedisplay();
 }
 
+void keyup(unsigned char ch,int x,int y) {
+  switch (ch) {
+    case('d'):
+      dpress = 0;
+      break;
+    case('a'):
+      apress = 0;
+      break;
+    case('w'):
+      wpress = 0;
+      break;
+    case('s'):
+      spress = 0;
+      break;
+  }
+}
+
 // Reshape function written by the professor
 void reshape(int width,int height)
 {
@@ -673,12 +705,53 @@ void reshape(int width,int height)
 
 void update()
 {
-  if (!pause) {
-    count += 1;
-    if (count >= 360)
-      count = 0;
-    glutPostRedisplay();
+  if (dpress || apress) {
+    timerad += 0.1;
   }
+  else {
+    timerad -= 0.1;
+  }
+  if (timerad < 0) {
+    timerad = 0;
+  }
+  if (timerad > 1.5) {
+    timerad = 1.5;
+  }
+
+  if (dpress && apress) {
+  }
+  else if (dpress) {
+    lx += 0.01*timerad;
+  }
+  else if (apress) {
+    lx -= 0.01*timerad;
+  }
+
+  if (wpress || spress) {
+    timerws += 0.1;
+  }
+  else {
+    timerws -= 0.1;
+  }
+  if (timerad < 0) {
+    timerad = 0;
+  }
+  if (timerad > 1.0) {
+    timerad = 1.0;
+  }
+
+  if (wpress && spress) {
+  }
+  else if (wpress) {
+    camx += vx*0.05;
+    camz += vz*0.05;
+  }
+  else if (spress) {
+    camx -= vx*0.05;
+    camz -= vz*0.05;
+  }
+
+  glutPostRedisplay();
   glutTimerFunc(25, update, 0);
 }
 
@@ -700,6 +773,7 @@ int main(int argc,char* argv[])
   glutSpecialFunc(special);
   // Tell GLUT to call "key" when a key is pressed
   glutKeyboardFunc(key);
+  glutKeyboardUpFunc(keyup);
   glutTimerFunc(25, update, 0);
   // Load Textures
   if (!LoadGLTextures())                         // Jump To Texture Loading Routine
