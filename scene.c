@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
+#include "lib/Bmp.c"
+#include "lib/Shapes.c"
 // OpenGL with prototypes for glext
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -30,7 +32,6 @@ int local     =   0;  // Local Viewer Model
 int ambient   =  30;  // Ambient intensity (%)
 int diffuse   =  60;  // Diffuse intensity (%)
 int specular  =  20;  // Specular intensity (%)
-float shinyvec[3];    // Shininess (value)
 int zh        =  75;  // Light azimuth
 float ylight  =   10;  // Elevation of light
 double count  =   75;
@@ -47,7 +48,7 @@ double timerad = 0;
 double timerws = 0;
 
 // Terrain stuff
-unsigned char map[128][128];
+//unsigned char map[128][128];
 
 // fog stuff
 GLuint filter;                      // Which Filter To Use
@@ -56,230 +57,11 @@ GLuint fogfilter= 1;                    // Which Fog To Use
 GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
 
 // Texture stuff
-unsigned int texture[8];
 double rep = 1;
-GLuint  loop;
-
-struct Texture {
-    unsigned long ulDimensionX;
-    unsigned long ulDimensionY;
-    char *pcData;
-};
-typedef struct Texture Texture;
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
 #define Sin(x) (sin((x)*3.1415927/180))
-
-// This function has been taken from http://nehe.gamedev.net/ and
-// modified to work on my computer, I hope it works on your's too!
-// This is because my method af editing bmp image (GIMP on macbook)
-// generates bmp images with unusual headers.  This should work with
-// the images that come with the source.
-int LoadBMP(char *szFilename, Texture *pTexture)
-{
-//  Texture *pTexture;
-  FILE *filePointer;
-  unsigned long ulSize;               // size of the image in bytes.
-  unsigned long iCount;               // standard counter.
-  unsigned short int usiPlanes;       // number of planes in image (must be 1)
-  unsigned short int usiBpp;          // number of bits per pixel (must be 24)
-  char cTempColor;                    // temporary color storage for bgr-rgb conversion.
-
-    // make sure the file is there.
-  if ((filePointer = fopen(szFilename, "rb"))==NULL)
-  {
-    printf("File Not Found : %s\n",szFilename);
-    exit(0);
-  }
-
-  // seek through the bmp header, up to the width/height:
-  fseek(filePointer, 18, SEEK_CUR);
-
-  char buf[4];
-  // read the width
-  if ((iCount = fread(buf, 4, 1, filePointer)) != 1) {
-  printf("Error reading width from %s.n", szFilename);
-  return 0;
-  }
-  pTexture->ulDimensionX =
-       ((unsigned long)buf[0]) |
-      (((unsigned long)buf[1])<<8) |
-      (((unsigned long)buf[2])<<16)|
-      (((unsigned long)buf[3])<<24);
-
-    // read the height
-  if ((iCount = fread(buf, 4, 1, filePointer)) != 1) {
-  printf("Error reading width from %s.n", szFilename);
-  return 0;
-  }
-  pTexture->ulDimensionY =
-       ((unsigned long)buf[0]) |
-      (((unsigned long)buf[1])<<8) |
-      (((unsigned long)buf[2])<<16)|
-      (((unsigned long)buf[3])<<24);
-
-  // calculate the size (assuming 24 bits or 3 bytes per pixel).
-  ulSize = pTexture->ulDimensionX * pTexture->ulDimensionY * 3;
-
-    // read the planes
-  if ((fread(&usiPlanes, 2, 1, filePointer)) != 1)
-  {
-    printf("Error reading planes from %s.\n", szFilename);
-    exit(0);
-  }
-
-  if (usiPlanes != 1)
-  {
-    printf("Planes from %s is not 1: %u\n", szFilename, usiPlanes);
-    exit(0);
-  }
-
-  // read the bpp
-  if ((iCount = fread(&usiBpp, 2, 1, filePointer)) != 1)
-  {
-    printf("Error reading bpp from %s.\n", szFilename);
-    exit(0);
-  }
-  if (usiBpp != 24)
-  {
-    printf("Bpp from %s is not 24: %u\n", szFilename, usiBpp);
-    exit(0);
-  }
-
-  // seek past the rest of the bitmap header.
-  fseek(filePointer, 92, SEEK_CUR);
-
-  // read the data.
-  pTexture->pcData = (char *) malloc(ulSize);
-  if (pTexture->pcData == NULL)
-  {
-    printf("Error allocating memory for color-corrected image data");
-    exit(0);
-  }
-
-  if ((iCount = fread(pTexture->pcData, ulSize, 1, filePointer)) != 1)
-  {
-    printf("Error reading image data from %s.\n", szFilename);
-    exit(0);
-  }
-
-  for (iCount=0;iCount<ulSize;iCount+=3) // reverse all of the colors. (bgr -> rgb)
-  {
-    cTempColor = pTexture->pcData[iCount];
-    pTexture->pcData[iCount] = pTexture->pcData[iCount+2];
-    pTexture->pcData[iCount+2] = cTempColor;
-  }
-  // we're done.
-//  return pTexture;
-  return 1;
-}
-
-// Load Bitmaps And Convert To Textures, code also inspired by nehe gamedev
-int LoadGLTextures()
-{
-  // Load Texture
-  Texture *TextureImage;
-  // allocate space for texture
-  TextureImage = (Texture *) malloc(sizeof(Texture));
-
-  glGenTextures(8, &texture[0]);
-
-  for(loop=0;loop<8;loop++)
-  {
-    switch(loop)
-    {
-      // image from http://en.pudn.com/downloads72/sourcecode/windows/opengl/detail262399_en.html
-      case 0:
-        LoadBMP("data/tex/snow.bmp", TextureImage);
-        break;
-
-      // image is from http://www.turbosquid.com/FullPreview/Index.cfm/ID/417496
-      case 1:
-        LoadBMP("data/tex/bark.bmp", TextureImage);
-        break;
-
-      // image is from http://www.123rf.com/photo_4835333_vibrant-green-tree-leaves-texture.html
-      case 2:
-        LoadBMP("data/tex/tree.bmp", TextureImage);
-        break;
-
-      case 3:
-        LoadBMP("data/sb/bk.bmp", TextureImage);
-        break;
-
-      case 4:
-        LoadBMP("data/sb/ft.bmp", TextureImage);
-        break;
-
-      case 5:
-        LoadBMP("data/sb/lf.bmp", TextureImage);
-        break;
-
-      case 6:
-        LoadBMP("data/sb/rt.bmp", TextureImage);
-        break;
-
-      case 7:
-        LoadBMP("data/sb/up.bmp", TextureImage);
-        break;
-
-
-  }
-    glBindTexture(GL_TEXTURE_2D, texture[loop]);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, 3, TextureImage->ulDimensionX, TextureImage->ulDimensionY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage->pcData);
-  }
-
-  if (TextureImage)                      // If Texture Exists
-  {
-    if (TextureImage->pcData)            // If Texture Image Exists
-    {
-      free(TextureImage->pcData);        // Free The Texture Image Memory
-    }
-    free(TextureImage);                  // Free The Image Structure
-  }
-
-  return 1;                                   // Return The Status
-}
-
-// uses the same apporach as NeHe but for an RGB tga file
-void loadterrain() {
-  FILE *filePointer;
-  unsigned long iCount;
-  unsigned char rgbmap[128][128*3];
-  int i, j;
-  // make sure the file is there.
-  // I found this file at http://www.lighthouse3d.com/opengl/terrain/
-  if ((filePointer = fopen("data/terrain/ter.tga", "rb"))==NULL)
-  {
-    printf("File Not Found : ter.tga");
-    exit(0);
-  }
-  fseek(filePointer, 12, SEEK_CUR);
-
-  char buf[4];
-  // read the width and height
-  if ((iCount = fread(buf, 4, 1, filePointer)) != 1) {
-    printf("Error reading width from terr.tga");
-    exit(0);
-  }
-
-  fseek(filePointer, 2, SEEK_CUR);
-
-  for(i = 0; i<128; i++) {
-    if ((iCount = fread(rgbmap[i], 128*3, 1, filePointer)) != 1) {
-      printf("Error reading width from terr.tga");
-      exit(0);
-    }
-  }
-  for(i = 0; i<128; i++) {
-    for(j = 0; j<128; j++) {
-      map[i][j] =  rgbmap[i][3*j];
-    }
-  }
-}
 
 // sets the projection.  Written by professor
 static void Project()
@@ -293,82 +75,6 @@ static void Project()
   glMatrixMode(GL_MODELVIEW);
   //  Undo previous transformations
   glLoadIdentity();
-}
-
-// A function to draw a cone.
-static void cone(double x, double y, double z,
-                     double dx, double dy, double dz,
-                     double th) {
-  //GLfloat l,m,angle;
-  float white[] = {1,1,1,1};
-  float black[] = {0,0,0,1};
-  double nfaces = 32;
-  double i;
-  double len = 0.8;
-  double rad = 0.8;
-
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
-
-  glPushMatrix();
-  glTranslated(x,y,z);
-  glRotated(th,1,0,0);
-  glScaled(dx,dy,dz);
-
-  glBegin(GL_TRIANGLE_FAN);
-  glTexCoord2f(0.0f, 0.0f);
-  glTexCoord2f(0.0f, 1.0f);
-  glVertex3f(0, 1, 0);
-  for (i = 0; i <= 1.1; i += 1.0/nfaces) {
-    float radians = i*M_PI*2.0f;
-    float cr = cos(radians);
-    float sr = sin(radians);
-    glNormal3f(cr, 0.6667f, sr);
-    glTexCoord2f(1.0, i);
-    glVertex3f(rad*cr, 1-len, rad*sr);
-  }
-  glEnd();
-  glPopMatrix();
-}
-
-// A function to draw a cylinder
-static void cylinder(double x, double y, double z,
-                     double dx, double dy, double dz,
-                     double th) {
-  // Save transformation
-  glPushMatrix();
-  // Offset
-  glTranslated(x,y,z);
-  glRotated(th,0,1,0);
-  glScaled(dx,dy,dz);
-
-  float white[] = {1,1,1,1};
-  float black[] = {0,0,0,1};
-
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
-
-  int epsilon = 1.0f;
-  float angle;
-  int nfaces = 20;
-  int len = 4;
-
-  glBegin(GL_TRIANGLE_STRIP);
-  for(angle = 0.0f; angle <= 1.0f+epsilon; angle += 1.0f/nfaces)
-  {
-    float radians = angle*M_PI*2.0f;
-    float cr = cos(radians);
-    float sr = sin(radians);
-    glNormal3f(cr, 0.0f, sr);
-    glTexCoord2f(1.0f, angle);
-    glVertex3f(cr, len*0.5f, sr);
-    glTexCoord2f(0.0f, angle);
-    glVertex3f(cr, len*-0.5f, sr);
-  }
-  glEnd();
-  glPopMatrix();
 }
 
 // gets the height at that point in the terrain
