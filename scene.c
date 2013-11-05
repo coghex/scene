@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
-#include "lib/Bmp.c"
+#include "lib/Load.c"
 #include "lib/Shapes.c"
 // OpenGL with prototypes for glext
 #define GL_GLEXT_PROTOTYPES
@@ -47,9 +47,6 @@ int spress = 0;
 double timerad = 0;
 double timerws = 0;
 
-// Terrain stuff
-//unsigned char map[128][128];
-
 // fog stuff
 GLuint filter;                      // Which Filter To Use
 GLuint fogMode[]= { GL_EXP, GL_EXP2, GL_LINEAR };   // Storage For Three Types Of Fog
@@ -83,6 +80,17 @@ double getheight(double x, double z) {
   double b = z/0.4+64;
 
   return 0.01*map[(int)a][(int)b] - 1;
+}
+
+void drawCube(double x, double y, double s, double th)
+{
+   glPushMatrix();
+   glTranslatef(x,getheight(y,x),y);
+   glScalef(s,s,s);
+   glRotated(th,0,1,0);
+   glColor3f(0.27,0.27,0.27);
+   glCallList(cube);
+   glPopMatrix();
 }
 
 // draws the ground in strips, the idea came from 
@@ -284,6 +292,9 @@ void display()
   fog();
   dooohmmmme(camx, camy, camz, 10);
   tree(camx+vx*M_PI, getheight(camz+vz*M_PI, camx+vx*M_PI)+0.3, camz+vz*M_PI, 1, 1, 1, 0, 2);
+  drawCube(-2, 5, 0.5, 45);
+  drawCube(0, -2, 1, 0);
+  drawCube(-7, 3, 0.2, 100);
 
   // shows in wireframe
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -487,6 +498,7 @@ int main(int argc,char* argv[])
     exit(0);                                // If Texture Didn't Load Return FALSE
   }
   loadterrain();
+  loadCube("data/objects/cube.obj");
 
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();
