@@ -56,6 +56,13 @@ GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
 // Texture stuff
 double rep = 1;
 
+// rock list
+GLuint rock;
+
+// collision detection
+double treemap[128][3];
+int treecount = 0;
+
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
 #define Sin(x) (sin((x)*3.1415927/180))
@@ -74,6 +81,96 @@ static void Project()
   glLoadIdentity();
 }
 
+double treediff(int i, int j) {
+  return 0.75*(treemap[i][2] + treemap[j][2]);
+}
+
+int collision(void) {
+  int i = 0;
+  int j = 0;
+
+  //0 = nocolllision
+  //1 = collisionleft
+  //2 = collisionright
+  //3 = collisionfront
+  //4 = collisionback
+  //5 = collisionfrontleft
+  //6 = collisionfrontright
+  //7 = collisionbackleft
+  //8 = collisionbackright
+  //9 = i dunno
+
+  for (i=0;i<128;i++) {
+    for (j=0;j<128;j++) {
+      if ((i==j)||(treemap[i][0] == treemap[j][0] && treemap[i][1] == treemap[j][1])){}
+      else if (((treemap[i][0] - treemap[j][0]) < treediff(i, j)) &&
+          ((treemap[i][0] - treemap[j][0]) > -treediff(i, j)) &&
+          ((treemap[i][1] - treemap[j][1]) < treediff(i, j)) &&
+          ((treemap[i][1] - treemap[j][1]) > -treediff(i, j))) {
+        if (wpress && apress && !dpress && !spress) {
+          camx -= vx*0.05;
+          camz -= vz*0.05;
+          lx += 0.01;
+          timerws = 0;
+          timerad = 0;
+          return 5;
+        }
+        else if (wpress && dpress && !apress && !spress) {
+          camx -= vx*0.05;
+          camz -= vz*0.05;
+          lx -= 0.01;
+          timerws = 0;
+          timerad = 0;
+          return 6;
+        }
+        else if (spress && apress && !wpress && !dpress) {
+          camx += vx*0.05;
+          camz += vz*0.05;
+          lx += 0.01;
+          timerws = 0;
+          timerad = 0;
+          return 7;
+        }
+        else if (spress && dpress && !wpress && !apress) {
+          camx += vx*0.05;
+          camz += vz*0.05;
+          lx -= 0.01;
+          timerws = 0;
+          timerad = 0;
+          return 8;
+        }
+        else if (apress && !wpress && !spress && !dpress) {
+          lx += 0.01;
+          timerad = 0;
+          return 1;
+        }
+        else if (dpress && !wpress && !spress && !apress) {
+          lx -= 0.01;
+          timerad = 0;
+          return 2;
+        }
+        else if (wpress && !dpress && !spress && !apress) {
+          camx -= vx*0.05;
+          camz -= vz*0.05;
+          timerws = 0;
+          return 3;
+        }
+        else if (spress && !wpress && !apress && !dpress) {
+          camx += vx*0.05;
+          camz += vz*0.05;
+          timerws = 0;
+          return 4;
+        }
+        else {
+          return 9;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
 // gets the height at that point in the terrain
 double getheight(double x, double z) {
   double a = x/0.4+64;
@@ -82,15 +179,19 @@ double getheight(double x, double z) {
   return 0.01*map[(int)a][(int)b] - 1;
 }
 
-void drawCube(double x, double y, double s, double th)
+void drawRock(double x, double y, double s, double th)
 {
-   glPushMatrix();
-   glTranslatef(x,getheight(y,x),y);
-   glScalef(s,s,s);
-   glRotated(th,0,1,0);
-   glColor3f(0.27,0.27,0.27);
-   glCallList(cube);
-   glPopMatrix();
+  glPushMatrix();
+  glTranslatef(x,getheight(y,x),y);
+  glScalef(s,s,s);
+  glRotated(th,0,1,0);
+  glColor3f(0.27,0.27,0.27);
+  glCallList(rock);
+  glPopMatrix();
+  treemap[treecount][0] = x;
+  treemap[treecount][1] = y;
+  treemap[treecount][2] = s;
+  treecount++;
 }
 
 // draws the ground in strips, the idea came from 
@@ -102,21 +203,41 @@ void drawGround(unsigned char map[128][128])
   float white[] = {1,1,1,1};
   float black[] = {0,0,0,1};
 
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture[0]);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
   glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
   glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
   glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
 
+  // if you dont split this then you can see the strips due to how it
+  // maps the texture, this looks the most alright
   glColor3f(1, 1, 1);
   for (i = 0; i < 127; i++) {
     glBegin(GL_TRIANGLE_STRIP);
-    for (j = 0; j < 127; j++) {
-      glNormal3f(0, 1, 0);
-      glVertex3f(0.4*(j - 64), 0.01*map[i+1][j] - 1, 0.4*(i+1 - 64));
-      glVertex3f(0.4*(j - 64), 0.01*map[i][j] - 1, 0.4*(i - 64));
+    for (j = 0; j < 63; j++) {
+      if (i%2) {
+        glNormal3f(0, 1, 0);
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 64), 0.01*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 63), 0.01*map[i][2*j+1] - 1, 0.4*(i - 64));
+      }
+      else {
+        glNormal3f(0, 1, 0);
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i][2*j+1] - 1, 0.4*(i - 64));
+      }
     }
     glEnd();
   }
-
+  glDisable(GL_TEXTURE_2D);
 }
 
 void tree(double x, double y, double z,
@@ -129,6 +250,10 @@ void tree(double x, double y, double z,
   glTranslated(x,y,z);
   glRotated(th,0,0,1);
   glScaled(dx,dy,dz);
+
+  treemap[treecount][0] = x;
+  treemap[treecount][1] = z;
+  treemap[treecount][2] = 0.4*(dx*dy*dz);
 
   glColor3f(.55, .27, .07);
   glEnable(GL_TEXTURE_2D);
@@ -147,6 +272,7 @@ void tree(double x, double y, double z,
     glDisable(GL_TEXTURE_2D);
   }
   glPopMatrix();
+  treecount++;
 }
 
 // creates a skybox and textures it, inspired by some code I
@@ -292,9 +418,9 @@ void display()
   fog();
   dooohmmmme(camx, camy, camz, 10);
   tree(camx+vx*M_PI, getheight(camz+vz*M_PI, camx+vx*M_PI)+0.3, camz+vz*M_PI, 1, 1, 1, 0, 2);
-  drawCube(-2, 5, 0.5, 45);
-  drawCube(0, -2, 1, 0);
-  drawCube(-7, 3, 0.2, 100);
+  drawRock(-2, 5, 0.5, 45);
+  drawRock(0, -2, 1, 0);
+  drawRock(-7, 3, 0.2, 100);
 
   // shows in wireframe
   //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -304,6 +430,7 @@ void display()
   tree(1, getheight(0.2, 1)+0.3, 0.2, 1, 1, 1, 0, 2);
   tree(3, getheight(-4, 3)+0.3, -4, 1, 1, 1, 0, 4);
   tree(5, getheight(3, 5)+0.3, 3, 1, 1, 1, 0, 2);
+
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture[0]);
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -313,6 +440,7 @@ void display()
   drawGround(map);
   glDisable(GL_TEXTURE_2D);
 
+  treecount = 0;
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -422,25 +550,31 @@ void reshape(int width,int height)
 
 void update()
 {
+
+  int col;
+
   if (dpress || apress) {
     timerad += 0.1;
   }
   else {
     timerad -= 0.1;
   }
+
   if (timerad < 0) {
     timerad = 0;
   }
-  if (timerad > 1.5) {
-    timerad = 1.5;
+  if (timerad > 2) {
+    timerad = 2;
   }
 
+  col = collision();
   if (dpress && apress) {
+    timerws = 0;
   }
-  else if (dpress) {
+  else if (dpress && col != 2) {
     lx += 0.01*timerad;
   }
-  else if (apress) {
+  else if (apress && col != 1) {
     lx -= 0.01*timerad;
   }
 
@@ -450,22 +584,25 @@ void update()
   else {
     timerws -= 0.1;
   }
-  if (timerad < 0) {
-    timerad = 0;
+
+  if (timerws < 0) {
+    timerws = 0;
   }
-  if (timerad > 1.0) {
-    timerad = 1.0;
+  if (timerws > 2) {
+    timerws = 2;
   }
 
+  col = collision();
   if (wpress && spress) {
+    timerad = 0;
   }
-  else if (wpress) {
-    camx += vx*0.05;
-    camz += vz*0.05;
+  else if (wpress && col != 3) {
+    camx += vx*0.05*timerws;
+    camz += vz*0.05*timerws;
   }
-  else if (spress) {
-    camx -= vx*0.05;
-    camz -= vz*0.05;
+  else if (spress && col != 4) {
+    camx -= vx*0.05*timerws;
+    camz -= vz*0.05*timerws;
   }
 
   glutPostRedisplay();
@@ -498,8 +635,11 @@ int main(int argc,char* argv[])
     exit(0);                                // If Texture Didn't Load Return FALSE
   }
   loadterrain();
-  loadCube("data/objects/cube.obj");
-
+  //I found the rock here: http://robo3d.com/index.php?pr=100903-tip2
+  rock = loadCube("data/objects/rock.obj", rock);
+  if (rock == 0) {
+    exit(0);
+  }
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();
   return 0;

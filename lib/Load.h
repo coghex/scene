@@ -18,15 +18,14 @@ typedef struct Texture Texture;
 unsigned int texture[8];
 int loop;
 
-GLuint cube;
-double cubemap[50000][3];
-double cubemapn[50000][3];
-int normals[50000][50000];
-double avg[50000][3];
+double cubemap[10000][3];
+double cubemapn[10000][3];
+int normals[10000][10000];
+double avg[10000][3];
 
 void loadterrain(void);
 int LoadBMP(char *szFilename, Texture *pTexture);
 int LoadGLTextures(void);
-void loadCube(char *fname);
+GLuint loadCube(char *fname, GLuint cube);
 
 #endif

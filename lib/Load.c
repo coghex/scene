@@ -220,7 +220,7 @@ int LoadGLTextures(void)
   return 1;                                   // Return The Status
 }
 
-void loadCube(char *fname)
+GLuint loadCube(char *fname, GLuint cube)
 {
   FILE *fp;
   int read;
@@ -325,5 +325,6 @@ void loadCube(char *fname)
   glPopMatrix();
   glEndList();
   fclose(fp);
+  return cube;
 }
 
