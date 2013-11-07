@@ -15,7 +15,7 @@ struct Texture {
     char *pcData;
 };
 typedef struct Texture Texture;
-unsigned int texture[8];
+unsigned int texture[20];
 int loop;
 
 double cubemap[10000][3];

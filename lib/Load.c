@@ -18,7 +18,7 @@ void loadterrain(void) {
   int i, j;
   // make sure the file is there.
   // I found this file at http://www.lighthouse3d.com/opengl/terrain/
-  if ((filePointer = fopen("data/terrain/ter.tga", "rb"))==NULL)
+  if ((filePointer = fopen("data/terrain/ski.tga", "rb"))==NULL)
   {
     printf("File Not Found : ter.tga");
     exit(0);
@@ -36,7 +36,7 @@ void loadterrain(void) {
 
   for(i = 0; i<128; i++) {
     if ((iCount = fread(rgbmap[i], 128*3, 1, filePointer)) != 1) {
-      printf("Error reading width from terr.tga");
+      printf("Error reading from terr.tga");
       exit(0);
     }
   }
@@ -159,9 +159,9 @@ int LoadGLTextures(void)
   // allocate space for texture
   TextureImage = (Texture *) malloc(sizeof(Texture));
 
-  glGenTextures(8, &texture[0]);
+  glGenTextures(20, &texture[0]);
 
-  for(loop=0;loop<8;loop++)
+  for(loop=0;loop<20;loop++)
   {
     switch(loop)
     {
@@ -200,6 +200,53 @@ int LoadGLTextures(void)
         LoadBMP("data/sb/up.bmp", TextureImage);
         break;
 
+      case 8:
+        LoadBMP("data/tex/f1.bmp", TextureImage);
+        break;
+
+      case 9:
+        LoadBMP("data/tex/f2.bmp", TextureImage);
+        break;
+
+      case 10:
+        LoadBMP("data/tex/f3.bmp", TextureImage);
+        break;
+
+      case 11:
+        LoadBMP("data/tex/f4.bmp", TextureImage);
+        break;
+
+      case 12:
+        LoadBMP("data/tex/f5.bmp", TextureImage);
+        break;
+
+      case 13:
+        LoadBMP("data/tex/f6.bmp", TextureImage);
+        break;
+
+      case 14:
+        LoadBMP("data/tex/f7.bmp", TextureImage);
+        break;
+
+      case 15:
+        LoadBMP("data/tex/f8.bmp", TextureImage);
+        break;
+
+      case 16:
+        LoadBMP("data/tex/f9.bmp", TextureImage);
+        break;
+
+      case 17:
+        LoadBMP("data/tex/f10.bmp", TextureImage);
+        break;
+
+      case 18:
+        LoadBMP("data/tex/f11.bmp", TextureImage);
+        break;
+
+      case 19:
+        LoadBMP("data/tex/f12.bmp", TextureImage);
+        break;
 
   }
     glBindTexture(GL_TEXTURE_2D, texture[loop]);

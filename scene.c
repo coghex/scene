@@ -19,12 +19,20 @@
 int fov=55;       // Field of view (for perspective)
 double asp=2;     // Aspect ratio
 double dim=5.0;   // Size of world
-double lx = 0, ly = 0;    // Perspective angle
-double camx = -15, camy = 1, camz = 0; // Camera Location
+double lx = 0, ly = -0.5;    // Perspective angle
+double camx = -4, camy = 1, camz = 1; // Camera Location
 double vx = 0, vy = 0, vz = 0; // viewing direction
 
 int width = 600;
 int height = 600;
+
+double randomlistx[128];
+double randomlisty[128];
+double randomlistrockx[128];
+double randomlistrocky[128];
+double randomlistangle[128];
+double randomlistsize[128];
+int randomtreesize[128];
 
 // Light values
 int distance  =   20;  // Light distance
@@ -46,6 +54,7 @@ int wpress = 0;
 int spress = 0;
 double timerad = 0;
 double timerws = 0;
+int shift = 0;
 
 // fog stuff
 GLuint filter;                      // Which Filter To Use
@@ -85,6 +94,34 @@ double treediff(int i, int j) {
   return 0.75*(treemap[i][2] + treemap[j][2]);
 }
 
+int randnum(int limit) {
+/* return a random number between 0 and limit inclusive.
+ */
+
+    int divisor = RAND_MAX/(limit+1);
+    int retval;
+
+    do {
+        retval = rand() / divisor;
+    } while (retval > limit);
+
+    return retval;
+}
+
+void initrandomnumbers(void) {
+  int i;
+  for (i = 0; i < 128; i++)
+  {
+    randomlistx[i] = randnum(10);
+    randomlisty[i] = randnum(50)/10.0;
+    randomlistrockx[i] = 3 - randnum(6);
+    randomlistrocky[i] = randnum(50);
+    randomlistangle[i] = randnum(360);
+    randomlistsize[i] = randnum(50)/50.0 + 0.1;
+    randomtreesize[i] = randnum(4) + 2;
+  }
+}
+
 int collision(void) {
   int i = 0;
   int j = 0;
@@ -100,70 +137,68 @@ int collision(void) {
   //8 = collisionbackright
   //9 = i dunno
 
-  for (i=0;i<128;i++) {
-    for (j=0;j<128;j++) {
-      if ((i==j)||(treemap[i][0] == treemap[j][0] && treemap[i][1] == treemap[j][1])){}
-      else if (((treemap[i][0] - treemap[j][0]) < treediff(i, j)) &&
-          ((treemap[i][0] - treemap[j][0]) > -treediff(i, j)) &&
-          ((treemap[i][1] - treemap[j][1]) < treediff(i, j)) &&
-          ((treemap[i][1] - treemap[j][1]) > -treediff(i, j))) {
-        if (wpress && apress && !dpress && !spress) {
-          camx -= vx*0.05;
-          camz -= vz*0.05;
-          lx += 0.01;
-          timerws = 0;
-          timerad = 0;
-          return 5;
-        }
-        else if (wpress && dpress && !apress && !spress) {
-          camx -= vx*0.05;
-          camz -= vz*0.05;
-          lx -= 0.01;
-          timerws = 0;
-          timerad = 0;
-          return 6;
-        }
-        else if (spress && apress && !wpress && !dpress) {
-          camx += vx*0.05;
-          camz += vz*0.05;
-          lx += 0.01;
-          timerws = 0;
-          timerad = 0;
-          return 7;
-        }
-        else if (spress && dpress && !wpress && !apress) {
-          camx += vx*0.05;
-          camz += vz*0.05;
-          lx -= 0.01;
-          timerws = 0;
-          timerad = 0;
-          return 8;
-        }
-        else if (apress && !wpress && !spress && !dpress) {
-          lx += 0.01;
-          timerad = 0;
-          return 1;
-        }
-        else if (dpress && !wpress && !spress && !apress) {
-          lx -= 0.01;
-          timerad = 0;
-          return 2;
-        }
-        else if (wpress && !dpress && !spress && !apress) {
-          camx -= vx*0.05;
-          camz -= vz*0.05;
-          timerws = 0;
-          return 3;
-        }
-        else if (spress && !wpress && !apress && !dpress) {
-          camx += vx*0.05;
-          camz += vz*0.05;
-          timerws = 0;
-          return 4;
-        }
-        else {
-          return 9;
-        }
+  for (j=0;j<128;j++) {
+    if ((i==j)||(treemap[0][0] == treemap[j][0] && treemap[0][1] == treemap[j][1])){}
+    else if (((treemap[0][0] - treemap[j][0]) < treediff(0, j)) &&
+        ((treemap[0][0] - treemap[j][0]) > -treediff(0, j)) &&
+        ((treemap[0][1] - treemap[j][1]) < treediff(0, j)) &&
+        ((treemap[0][1] - treemap[j][1]) > -treediff(0, j))) {
+      if (wpress && apress && !dpress && !spress) {
+        camx -= vx*0.05;
+        camz -= vz*0.05;
+        lx += 0.01;
+        timerws = 0;
+        timerad = 0;
+        return 5;
+      }
+      else if (wpress && dpress && !apress && !spress) {
+        camx -= vx*0.05;
+        camz -= vz*0.05;
+        lx -= 0.01;
+        timerws = 0;
+        timerad = 0;
+        return 6;
+      }
+      else if (spress && apress && !wpress && !dpress) {
+        camx += vx*0.05;
+        camz += vz*0.05;
+        lx += 0.01;
+        timerws = 0;
+        timerad = 0;
+        return 7;
+      }
+      else if (spress && dpress && !wpress && !apress) {
+        camx += vx*0.05;
+        camz += vz*0.05;
+        lx -= 0.01;
+        timerws = 0;
+        timerad = 0;
+        return 8;
+      }
+      else if (apress && !wpress && !spress && !dpress) {
+        lx += 0.01;
+        timerad = 0;
+        return 1;
+      }
+      else if (dpress && !wpress && !spress && !apress) {
+        lx -= 0.01;
+        timerad = 0;
+        return 2;
+      }
+      else if (wpress && !dpress && !spress && !apress) {
+        camx -= vx*0.05;
+        camz -= vz*0.05;
+        timerws = 0;
+        return 3;
+      }
+      else if (spress && !wpress && !apress && !dpress) {
+        camx += vx*0.05;
+        camz += vz*0.05;
+        timerws = 0;
+        return 4;
+      }
+      else {
+        return 9;
       }
     }
   }
@@ -176,7 +211,12 @@ double getheight(double x, double z) {
   double a = x/0.4+64;
   double b = z/0.4+64;
 
-  return 0.01*map[(int)a][(int)b] - 1;
+  if (b > 124) {
+    return 0.02*map[(int)a][(int)b - 124] - 1 - 0.02*(0xc0-0x20);
+  }
+  else {
+    return 0.02*map[(int)a][(int)b] - 1;
+  }
 }
 
 void drawRock(double x, double y, double s, double th)
@@ -199,7 +239,7 @@ void drawRock(double x, double y, double s, double th)
 // it in a different way
 void drawGround(unsigned char map[128][128])
 {
-  int i, j;
+  int i, j, k;
   float white[] = {1,1,1,1};
   float black[] = {0,0,0,1};
 
@@ -222,21 +262,46 @@ void drawGround(unsigned char map[128][128])
     for (j = 0; j < 63; j++) {
       if (i%2) {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 64), 0.01*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i][2*j] - 1, 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 63), 0.01*map[i][2*j+1] - 1, 0.4*(i - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 64), 0.02*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 63), 0.02*map[i][2*j+1] - 1, 0.4*(i - 64));
       }
       else {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 64), 0.01*map[i][2*j] - 1, 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 63), 0.01*map[i][2*j+1] - 1, 0.4*(i - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i][2*j+1] - 1, 0.4*(i - 64));
       }
     }
     glEnd();
   }
+
+  glColor3f(1, 1, 1);
+  for (i = 0; i < 127; i++) {
+    glBegin(GL_TRIANGLE_STRIP);
+    for (j = 0; j < 63; j++) {
+      k = j + 62;
+      if (i%2) {
+        glNormal3f(0, 1, 0);
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 64), 0.02*map[i+1][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i+1][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 63), 0.02*map[i][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+      }
+      else {
+        glNormal3f(0, 1, 0);
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i+1][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i+1][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+      }
+    }
+    glEnd();
+  }
+
+
   glDisable(GL_TEXTURE_2D);
 }
 
@@ -350,6 +415,44 @@ void dooohmmmme(float x, float y, float z, float len) {
   }
 }
 
+void drawgoal(int x) {
+  int i;
+  glPushMatrix();
+  glTranslatef(x,getheight(0,x),0);
+
+  glColor3f(1, 1, 1);
+
+  for (i=0;i<12;i++) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture[i+8]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBegin(GL_QUADS);
+    glTexCoord2f(1, 1); glVertex3f(0, 6, i-5);
+    glTexCoord2f(1, 0); glVertex3f(0, 5, i-5);
+    glTexCoord2f(0, 0); glVertex3f(0, 5, i-6);
+    glTexCoord2f(0, 1); glVertex3f(0, 6, i-6);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+  }
+
+  glBegin(GL_QUADS);
+  glVertex3f(0, -2, -6);
+  glVertex3f(0, -2, -5.8);
+  glVertex3f(0, 5, -5.8);
+  glVertex3f(0, 5, -6);
+  glEnd();
+
+  glBegin(GL_QUADS);
+  glVertex3f(0, -2, 6);
+  glVertex3f(0, -2, 5.8);
+  glVertex3f(0, 5, 5.8);
+  glVertex3f(0, 5, 6);
+  glEnd();
+
+  glPopMatrix();
+}
+
 // lighting
 void lettherebelight(void)
 {
@@ -393,6 +496,8 @@ void fog(void) {
 // Display Routine
 void display()
 {
+  int i, e;
+  double a, b, c, d;
   // Erase the window and the depth buffer
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   // Enable Z-buffering in OpenGL
@@ -405,8 +510,8 @@ void display()
   vy = ly;
   vz = sin(lx);
 
-  // positions the camera based on the terrain
-  camy = getheight(camz, camx) + 1.5;
+  // positions the camera based on the player
+  camy = getheight(camz+vz*4, camx+vx*4) + 3;
 
   // This is the professor's code
   gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
@@ -417,19 +522,27 @@ void display()
   lettherebelight();
   fog();
   dooohmmmme(camx, camy, camz, 10);
-  tree(camx+vx*M_PI, getheight(camz+vz*M_PI, camx+vx*M_PI)+0.3, camz+vz*M_PI, 1, 1, 1, 0, 2);
-  drawRock(-2, 5, 0.5, 45);
-  drawRock(0, -2, 1, 0);
-  drawRock(-7, 3, 0.2, 100);
+  tree(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3, camz+vz*4, 1, 1, 1, 0, 2);
+  drawgoal(60);
 
-  // shows in wireframe
-  //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-  tree(-4, getheight(2, -4)+0.3, 2, 1, 1, 1, 0, 2);
-  tree(-1.1, getheight(1, -1.1)+0.3, 1, 1, 1, 1, 0, 2);
-  tree(-3, getheight(-4, -3)+0.3, -4, 1, 1, 1, 0, 2);
-  tree(1, getheight(0.2, 1)+0.3, 0.2, 1, 1, 1, 0, 2);
-  tree(3, getheight(-4, 3)+0.3, -4, 1, 1, 1, 0, 4);
-  tree(5, getheight(3, 5)+0.3, 3, 1, 1, 1, 0, 2);
+  for (i = 0; i < 50; i++)
+  {
+    a = i + randomlistx[i];
+    b = i + randomlistx[128 - i];
+    c = 4 + randomlisty[i];
+    d = -4 - randomlisty[128 - i];
+    e = randomtreesize[i];
+    tree(a, getheight(c, a)+0.3, c, 1, 1, 1, 0, e);
+    tree(b, getheight(d, b)+0.3, d, 1, 1, 1, 0, e);
+  }
+
+  for (i = 0; i < 10; i++) {
+    a = randomlistrocky[i];
+    b = randomlistrockx[i];
+    c = randomlistsize[i];
+    d = randomlistangle[i];
+    drawRock(a, b, c, d);
+  }
 
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D,texture[0]);
@@ -504,6 +617,20 @@ void key(unsigned char ch,int x,int y)
     case('d'):
       dpress = 1;
       break;
+    case('W'):
+      wpress = 1;
+      shift = 1;
+      break;
+    case('S'):
+      spress = 1;
+      shift = 1;
+      break;
+    case('A'):
+      apress = 1;
+      break;
+    case('D'):
+      dpress = 1;
+      break;
     case('q'):
       if (pause) {
         count += 5;
@@ -534,6 +661,21 @@ void keyup(unsigned char ch,int x,int y) {
     case('s'):
       spress = 0;
       break;
+    case('W'):
+      wpress = 0;
+      shift = 0;
+      break;
+    case('S'):
+      spress = 0;
+      shift = 0;
+      break;
+    case('A'):
+      apress = 0;
+      break;
+    case('D'):
+      dpress = 0;
+      break;
+
   }
 }
 
@@ -569,7 +711,7 @@ void update()
 
   col = collision();
   if (dpress && apress) {
-    timerws = 0;
+    timerad = 0;
   }
   else if (dpress && col != 2) {
     lx += 0.01*timerad;
@@ -588,13 +730,16 @@ void update()
   if (timerws < 0) {
     timerws = 0;
   }
-  if (timerws > 2) {
+  if (timerws > 2 && !shift) {
     timerws = 2;
+  }
+  if (timerws > 5) {
+    timerws = 5;
   }
 
   col = collision();
   if (wpress && spress) {
-    timerad = 0;
+    timerws = 0;
   }
   else if (wpress && col != 3) {
     camx += vx*0.05*timerws;
@@ -604,6 +749,22 @@ void update()
     camx -= vx*0.05*timerws;
     camz -= vz*0.05*timerws;
   }
+
+  vx = cos(lx);
+  vy = ly;
+  vz = sin(lx);
+
+  // positions the camera based on the player
+  if (camy < (getheight(camz+vz*4, camx+vx*4) + 3))
+  {
+    camy += 0.01;
+  }
+  else if (camy > (getheight(camz+vz*4, camx+vx*4) + 3))
+  {
+    camy -= 0.01;
+  }
+  // This is the professor's code
+  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
 
   glutPostRedisplay();
   glutTimerFunc(25, update, 0);
@@ -640,6 +801,8 @@ int main(int argc,char* argv[])
   if (rock == 0) {
     exit(0);
   }
+  initrandomnumbers();
+
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();
   return 0;
