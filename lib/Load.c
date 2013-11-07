@@ -11,16 +11,16 @@
 
 
 // uses the same apporach as NeHe but for an RGB tga file
-void loadterrain(void) {
+int loadterrain(char *name) {
   FILE *filePointer;
   unsigned long iCount;
   unsigned char rgbmap[128][128*3];
   int i, j;
   // make sure the file is there.
   // I found this file at http://www.lighthouse3d.com/opengl/terrain/
-  if ((filePointer = fopen("data/terrain/ski.tga", "rb"))==NULL)
+  if ((filePointer = fopen(name, "rb"))==NULL)
   {
-    printf("File Not Found : ter.tga");
+    printf("File Not Found : %s", name);
     exit(0);
   }
   fseek(filePointer, 12, SEEK_CUR);
@@ -28,7 +28,7 @@ void loadterrain(void) {
   char buf[4];
   // read the width and height
   if ((iCount = fread(buf, 4, 1, filePointer)) != 1) {
-    printf("Error reading width from terr.tga");
+    printf("Error reading width from %s", name);
     exit(0);
   }
 
@@ -36,15 +36,16 @@ void loadterrain(void) {
 
   for(i = 0; i<128; i++) {
     if ((iCount = fread(rgbmap[i], 128*3, 1, filePointer)) != 1) {
-      printf("Error reading from terr.tga");
+      printf("Error reading from %s", name);
       exit(0);
     }
   }
   for(i = 0; i<128; i++) {
     for(j = 0; j<128; j++) {
-      map[i][j] =  rgbmap[i][3*j];
+      map[i][j] = rgbmap[i][3*j];
     }
   }
+  return map[64][0] - map[64][127];
 }
 
 // This function has been taken from http://nehe.gamedev.net/ and

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
+#include <time.h>
 #include "lib/Load.c"
 #include "lib/Shapes.c"
 // OpenGL with prototypes for glext
@@ -25,6 +26,8 @@ double vx = 0, vy = 0, vz = 0; // viewing direction
 
 int width = 600;
 int height = 600;
+int mapdiff = 0;
+int timer = 0;
 
 double randomlistx[128];
 double randomlisty[128];
@@ -46,6 +49,8 @@ double count  =   75;
 int pause     =   1;
 GLfloat tc1 = 1;
 GLfloat tc0 = 0;
+
+int area = 1;
 
 // key pres stuff
 int apress = 0;
@@ -76,6 +81,45 @@ int treecount = 0;
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
 #define Sin(x) (sin((x)*3.1415927/180))
+
+// Print was not written by me but provided by the professor
+#define LEN 8192  // Maximum length of text string
+void Print(const char* format , ...)
+{
+  char  buf[LEN];
+  char*  ch=buf;
+  va_list args;
+  //  Turn the parameters into a character string
+  va_start(args,format);
+  vsnprintf(buf,LEN,format,args);
+  va_end(args);
+  //  Display the characters one at a time at the current raster position
+  while (*ch)
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
+}
+
+// We need to set a new 2D enviornment if we want the text on top
+void begintext(int h, int w){
+  glMatrixMode(GL_PROJECTION);
+	// so we can restore the perspective view
+	glPushMatrix();
+	// reset the matrix
+ 	glLoadIdentity();
+	glOrtho( 0, h, 0, w, 0, 1 );
+  // go back to modelview
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	// make text on top
+  glDisable(GL_DEPTH_TEST);
+}
+
+void endtext(){
+	glEnable(GL_DEPTH_TEST);
+	glMatrixMode(GL_PROJECTION);
+	// pop the old matrix
+ 	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+}
 
 // sets the projection.  Written by professor
 static void Project()
@@ -109,14 +153,32 @@ int randnum(int limit) {
     return retval;
 }
 
+void resetarea(void) {
+  camx = -4;
+  camz = 1;
+  timer = 0;
+  switch (area) {
+    case (1):
+      mapdiff = loadterrain("data/terrain/ski.tga");
+      break;
+    case (2):
+      mapdiff = loadterrain("data/terrain/ski2.tga");
+      break;
+    default:
+      mapdiff = loadterrain("data/terrain/ski.tga");
+      break;
+  }
+}
+
 void initrandomnumbers(void) {
   int i;
+  srand(time(NULL));
   for (i = 0; i < 128; i++)
   {
     randomlistx[i] = randnum(10);
     randomlisty[i] = randnum(50)/10.0;
     randomlistrockx[i] = 3 - randnum(6);
-    randomlistrocky[i] = randnum(50);
+    randomlistrocky[i] = randnum(50) + 2;
     randomlistangle[i] = randnum(360);
     randomlistsize[i] = randnum(50)/50.0 + 0.1;
     randomtreesize[i] = randnum(4) + 2;
@@ -213,7 +275,7 @@ double getheight(double x, double z) {
   double b = z/0.4+64;
 
   if (b > 124) {
-    return scale*map[(int)a][(int)b - 124] - 1 - scale*(0xc0-0x20);
+    return scale*map[(int)a][(int)b - 124] - 1 - scale*(mapdiff);
   }
   else {
     return scale*map[(int)a][(int)b] - 1;
@@ -286,17 +348,17 @@ void drawGround(unsigned char map[128][128])
       k = j + 62;
       if (i%2) {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(mapdiff), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(mapdiff), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(mapdiff), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(mapdiff), 0.4*(i - 64));
       }
       else {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(mapdiff), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(mapdiff), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(mapdiff), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(mapdiff), 0.4*(i - 64));
       }
     }
     glEnd();
@@ -454,6 +516,33 @@ void drawgoal(int x) {
   glPopMatrix();
 }
 
+void win(void) {
+  dpress = 0;
+  wpress = 0;
+  apress = 0;
+  spress = 0;
+  int sec = ((timer/1000)%60);
+  int min = sec/60;
+
+  glWindowPos2i(width/2-60,height/2);
+  begintext(width, height);
+  Print("Finished!");
+  endtext();
+  glWindowPos2i(width/2-75,height/2 - 20);
+  begintext(width, height);
+  if (sec < 10) {
+    Print("Time of %d:0%d", min, sec);
+  }
+  else {
+    Print("Time of %d:%d", min, sec);
+  }
+  endtext();
+  glWindowPos2i(width/2-120,height/2 - 40);
+  begintext(width, height);
+  Print("choose your map by number");
+  endtext();
+}
+
 // lighting
 void lettherebelight(void)
 {
@@ -499,6 +588,9 @@ void display()
 {
   int i, e;
   double a, b, c, d;
+  int sec = ((timer/1000)%60);
+  int min = sec/60;
+
   // Erase the window and the depth buffer
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   // Enable Z-buffering in OpenGL
@@ -554,7 +646,24 @@ void display()
   drawGround(map);
   glDisable(GL_TEXTURE_2D);
 
+  if (camx > 58 && camz > -6 && camz < 6) {
+    win();
+  }
+  else {
+    glWindowPos2i(5,5);
+    begintext(width, height);
+    if (sec < 10) {
+      Print("%d:0%d", min, sec);
+    }
+    else {
+      Print("%d:%d", min, sec);
+    }
+    endtext();
+
+  }
+
   treecount = 0;
+
   // Render the scene
   glFlush();
   // Make the rendered scene visible
@@ -642,6 +751,14 @@ void key(unsigned char ch,int x,int y)
         count -= 5;
       }
       break;
+    case('1'):
+      area = 1;
+      resetarea();
+      break;
+    case('2'):
+      area = 2;
+      resetarea();
+      break;
   }
   Project();
   // Tell GLUT it is necessary to redisplay the scene
@@ -681,12 +798,14 @@ void keyup(unsigned char ch,int x,int y) {
 }
 
 // Reshape function written by the professor
-void reshape(int width,int height)
+void reshape(int w,int h)
 {
+  width = w;
+  height = h;
   // Ratio of the width to the height of the window
-  asp = (height>0) ? (double)width/height : 1;
+  asp = (h>0) ? (double)w/h : 1;
   // Set the viewport to the entire window
-  glViewport(0,0, width,height);
+  glViewport(0,0, w,h);
   // Set projection
   Project();
 }
@@ -755,17 +874,11 @@ void update()
   vy = ly;
   vz = sin(lx);
 
-  // positions the camera based on the player
-  if (camy < (getheight(camz+vz*4, camx+vx*4) + 3))
-  {
-    camy += 0.01;
+  timer += 25;
+
+  if (camx > 58 && camz > -6 && camz < 6) {
+    timer -= 25;
   }
-  else if (camy > (getheight(camz+vz*4, camx+vx*4) + 3))
-  {
-    camy -= 0.01;
-  }
-  // This is the professor's code
-  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
 
   glutPostRedisplay();
   glutTimerFunc(25, update, 0);
@@ -796,7 +909,7 @@ int main(int argc,char* argv[])
   {
     exit(0);                                // If Texture Didn't Load Return FALSE
   }
-  loadterrain();
+  mapdiff = loadterrain("data/terrain/ski.tga");
   //I found the rock here: http://robo3d.com/index.php?pr=100903-tip2
   rock = loadCube("data/objects/rock.obj", rock);
   if (rock == 0) {

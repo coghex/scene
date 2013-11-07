@@ -23,7 +23,7 @@ double cubemapn[10000][3];
 int normals[10000][10000];
 double avg[10000][3];
 
-void loadterrain(void);
+int loadterrain(char *name);
 int LoadBMP(char *szFilename, Texture *pTexture);
 int LoadGLTextures(void);
 GLuint loadCube(char *fname, GLuint cube);
