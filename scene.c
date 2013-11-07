@@ -64,6 +64,7 @@ GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
 
 // Texture stuff
 double rep = 1;
+double scale = 0.02;
 
 // rock list
 GLuint rock;
@@ -212,10 +213,10 @@ double getheight(double x, double z) {
   double b = z/0.4+64;
 
   if (b > 124) {
-    return 0.02*map[(int)a][(int)b - 124] - 1 - 0.02*(0xc0-0x20);
+    return scale*map[(int)a][(int)b - 124] - 1 - scale*(0xc0-0x20);
   }
   else {
-    return 0.02*map[(int)a][(int)b] - 1;
+    return scale*map[(int)a][(int)b] - 1;
   }
 }
 
@@ -262,17 +263,17 @@ void drawGround(unsigned char map[128][128])
     for (j = 0; j < 63; j++) {
       if (i%2) {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 64), 0.02*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i][2*j] - 1, 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 63), 0.02*map[i][2*j+1] - 1, 0.4*(i - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 64), scale*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), scale*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), scale*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 63), scale*map[i][2*j+1] - 1, 0.4*(i - 64));
       }
       else {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 64), 0.02*map[i][2*j] - 1, 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 63), 0.02*map[i][2*j+1] - 1, 0.4*(i - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*j - 64), scale*map[i+1][2*j] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*j - 64), scale*map[i][2*j] - 1, 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*j - 63), scale*map[i+1][2*j+1] - 1, 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*j - 63), scale*map[i][2*j+1] - 1, 0.4*(i - 64));
       }
     }
     glEnd();
@@ -285,17 +286,17 @@ void drawGround(unsigned char map[128][128])
       k = j + 62;
       if (i%2) {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 64), 0.02*map[i+1][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i+1][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 63), 0.02*map[i][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
       }
       else {
         glNormal3f(0, 1, 0);
-        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i+1][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 64), 0.02*map[i][2*j] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
-        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i+1][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i+1 - 64));
-        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 63), 0.02*map[i][2*j+1] - 1 - 0.02*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(1, 1); glVertex3f(0.4*(2*k - 64), scale*map[i+1][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(0, 1); glVertex3f(0.4*(2*k - 64), scale*map[i][2*j] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
+        glTexCoord2f(0, 0); glVertex3f(0.4*(2*k - 63), scale*map[i+1][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i+1 - 64));
+        glTexCoord2f(1, 0); glVertex3f(0.4*(2*k - 63), scale*map[i][2*j+1] - 1 - scale*(0xc0-0x20), 0.4*(i - 64));
       }
     }
     glEnd();
