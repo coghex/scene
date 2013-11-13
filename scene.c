@@ -22,12 +22,20 @@ double asp=2;     // Aspect ratio
 double dim=5.0;   // Size of world
 double lx = 0, ly = -0.5;    // Perspective angle
 double camx = -4, camy = 1, camz = 1; // Camera Location
+double editcamx = -4, editcamy = 10, editcamz = 1;
 double vx = 0, vy = 0, vz = 0; // viewing direction
 
 int width = 600;
 int height = 600;
 int mapdiff = 0;
 int timer = 0;
+int col = 0;
+int edit = 0;
+double steepness = 0;
+double air = 0;
+double airtime = 0;
+double pastcamx = -4;
+double pastcamz = 1;
 
 double randomlistx[128];
 double randomlisty[128];
@@ -35,14 +43,17 @@ double randomlistrockx[128];
 double randomlistrocky[128];
 double randomlistangle[128];
 double randomlistsize[128];
+double customtrees[128][2];
 int randomtreesize[128];
+
+int customtreecount = 0;
 
 // Light values
 int distance  =   20;  // Light distance
 int local     =   0;  // Local Viewer Model
 int ambient   =  30;  // Ambient intensity (%)
-int diffuse   =  60;  // Diffuse intensity (%)
-int specular  =  20;  // Specular intensity (%)
+int diffuse   =  100;  // Diffuse intensity (%)
+int specular  =  50;  // Specular intensity (%)
 int zh        =  75;  // Light azimuth
 float ylight  =   10;  // Elevation of light
 double count  =   75;
@@ -51,6 +62,7 @@ GLfloat tc1 = 1;
 GLfloat tc0 = 0;
 
 int area = 1;
+int oldarea = 1;
 
 // key pres stuff
 int apress = 0;
@@ -153,16 +165,40 @@ int randnum(int limit) {
     return retval;
 }
 
+void cleartrees() {
+  int i, j;
+  for (i = 0; i < 128; i++) {
+    for (j = 0; j < 128; j++) {
+      treemap[i][j] = 0;
+    }
+  }
+}
+
 void resetarea(void) {
   camx = -4;
   camz = 1;
+  timerws = 0;
   timer = 0;
+  col = 0;
+  vx = 0;
+  vz = 0;
+  lx = 0;
+  cleartrees();
   switch (area) {
+    case (0):
+      mapdiff = loadterrain("data/terrain/user.tga");
+      break;
     case (1):
       mapdiff = loadterrain("data/terrain/ski.tga");
       break;
     case (2):
       mapdiff = loadterrain("data/terrain/ski2.tga");
+      break;
+    case (3):
+      mapdiff = loadterrain("data/terrain/ski3.tga");
+      break;
+    case (4):
+      mapdiff = loadterrain("data/terrain/ski4.tga");
       break;
     default:
       mapdiff = loadterrain("data/terrain/ski.tga");
@@ -177,7 +213,7 @@ void initrandomnumbers(void) {
   {
     randomlistx[i] = randnum(10);
     randomlisty[i] = randnum(50)/10.0;
-    randomlistrockx[i] = 3 - randnum(6);
+    randomlistrockx[i] = 10 - randnum(20);
     randomlistrocky[i] = randnum(50) + 2;
     randomlistangle[i] = randnum(360);
     randomlistsize[i] = randnum(50)/50.0 + 0.1;
@@ -199,6 +235,10 @@ int collision(void) {
   //7 = collisionbackleft
   //8 = collisionbackright
   //9 = i dunno
+
+  if (air > 1) {
+    return 0;
+  }
 
   for (j=0;j<128;j++) {
     if ((i==j)||(treemap[0][0] == treemap[j][0] && treemap[0][1] == treemap[j][1])){}
@@ -491,6 +531,7 @@ void drawgoal(int x) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBegin(GL_QUADS);
+    glNormal3f(-1, 0, 0);
     glTexCoord2f(1, 1); glVertex3f(0, 6, i-5);
     glTexCoord2f(1, 0); glVertex3f(0, 5, i-5);
     glTexCoord2f(0, 0); glVertex3f(0, 5, i-6);
@@ -516,11 +557,31 @@ void drawgoal(int x) {
   glPopMatrix();
 }
 
+void drawcustomtrees(){
+  int i;
+  double x, z;
+  for (i = 0; i < customtreecount; i++) {
+    x = customtrees[i][0];
+    z = customtrees[i][1];
+    tree(x, getheight(z, x) + 0.3, z, 1, 1, 1, 0, 2);
+  }
+}
+
+void clearcustomtrees() {
+  int i;
+  for (i = 0; i < customtreecount; i++) {
+    customtrees[i][0] = 0;
+    customtrees[i][1] = 0;
+  }
+  customtreecount = 0;
+}
+
 void win(void) {
   dpress = 0;
   wpress = 0;
   apress = 0;
   spress = 0;
+  timerws = 0;
   int sec = ((timer/1000)%60);
   int min = sec/60;
 
@@ -536,6 +597,24 @@ void win(void) {
   else {
     Print("Time of %d:%d", min, sec);
   }
+  endtext();
+  glWindowPos2i(width/2-120,height/2 - 40);
+  begintext(width, height);
+  Print("choose your map by number");
+  endtext();
+}
+
+void lose(void) {
+  dpress = 0;
+  wpress = 0;
+  apress = 0;
+  spress = 0;
+  timerws = 0;
+  timerad = 0;
+
+  glWindowPos2i(width/2-60,height/2);
+  begintext(width, height);
+  Print("YOU LOSE!");
   endtext();
   glWindowPos2i(width/2-120,height/2 - 40);
   begintext(width, height);
@@ -570,6 +649,10 @@ void lettherebelight(void)
 
 }
 
+double steep(void) {
+  return getheight(camz, camx) - getheight(camz+vz, camx+vx);
+}
+
 // basic fog, some code from nehe.gamedev.net
 void fog(void) {
   glClearColor(0.5f,0.5f,0.5f,1.0f);          // We'll Clear To The Color Of The Fog ( Modified )
@@ -586,7 +669,7 @@ void fog(void) {
 // Display Routine
 void display()
 {
-  int i, e;
+  int i, j, e;
   double a, b, c, d;
   int sec = ((timer/1000)%60);
   int min = sec/60;
@@ -604,37 +687,62 @@ void display()
   vz = sin(lx);
 
   // positions the camera based on the player
-  camy = getheight(camz+vz*4, camx+vx*4) + 3;
+  camy = getheight(camz+vz*4, camx+vx*4) + 3 + air;
+  editcamy = getheight(editcamz, editcamx) + 17;
 
-  // This is the professor's code
-  gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
+  if (!edit) {
+    gluLookAt(camx,camy,camz,camx+vx,camy+vy,camz+vz,0,1,0);
+  }
+  else {
+    gluLookAt(editcamx, editcamy, editcamz, editcamx, camy, editcamz, 0, 0, 1);
+  }
   glShadeModel(GL_SMOOTH);
   // OpenGL should normalize normal vectors
   glEnable(GL_NORMALIZE);
 
-  lettherebelight();
-  fog();
-  dooohmmmme(camx, camy, camz, 10);
-  tree(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3, camz+vz*4, 1, 1, 1, 0, 2);
+  if (!edit) {
+    lettherebelight();
+    fog();
+    dooohmmmme(camx, camy, camz, 10);
+    tree(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, 0, 2);
+  }
+  else {
+    glDisable(GL_FOG);
+  }
   drawgoal(60);
 
   for (i = 0; i < 50; i++)
   {
     a = i + randomlistx[i];
     b = i + randomlistx[128 - i];
-    c = 4 + randomlisty[i];
-    d = -4 - randomlisty[128 - i];
+    c = 10 + randomlisty[i];
+    d = -10 - randomlisty[128 - i];
     e = randomtreesize[i];
     tree(a, getheight(c, a)+0.3, c, 1, 1, 1, 0, e);
     tree(b, getheight(d, b)+0.3, d, 1, 1, 1, 0, e);
   }
 
-  for (i = 0; i < 10; i++) {
-    a = randomlistrocky[i];
-    b = randomlistrockx[i];
-    c = randomlistsize[i];
-    d = randomlistangle[i];
-    drawRock(a, b, c, d);
+  if ((area != 0) && (!edit)) {
+    for (i = 0; i < 20; i++) {
+      a = randomlistrocky[i];
+      b = randomlistrockx[i];
+      c = randomlistsize[i];
+      d = randomlistangle[i];
+      drawRock(a, b, c, d);
+    }
+    for (i = 20; i < 40; i++) {
+      a = randomlistrocky[i];
+      b = randomlistrockx[i];
+      c = randomtreesize[i];
+      d = randomlistsize[i];
+      for (j = 0; j < 128; j++) {
+        if ((treemap[treecount][0] - treemap[j][0]) <  treediff(treecount, j)) continue;
+      }
+      tree(a, getheight(b, a) + 0.3, b, d, d, d, 0, c);
+    }
+  }
+  else {
+    drawcustomtrees();
   }
 
   glEnable(GL_TEXTURE_2D);
@@ -649,6 +757,10 @@ void display()
   if (camx > 58 && camz > -6 && camz < 6) {
     win();
   }
+  else if (col) {
+    lose();
+  }
+
   else {
     glWindowPos2i(5,5);
     begintext(width, height);
@@ -698,11 +810,6 @@ void key(unsigned char ch,int x,int y)
     case(32):
       pause = !pause;
       break;
-    case('0'):
-      camx = camz = 0;
-      lx = ly = 0;
-      fov = 55;
-      break;
     case('['):
       tc0 += 0.005;
       break;
@@ -716,16 +823,36 @@ void key(unsigned char ch,int x,int y)
       tc1 -= 0.005;
       break;
     case('w'):
-      wpress = 1;
+      if (edit) {
+        editcamz++;
+      }
+      else {
+        wpress = 1;
+      }
       break;
     case('s'):
-      spress = 1;
+      if (edit) {
+        editcamz--;
+      }
+      else {
+        spress = 1;
+      }
       break;
     case('a'):
-      apress = 1;
+      if (edit) {
+        editcamx++;
+      }
+      else {
+        apress = 1;
+      }
       break;
     case('d'):
-      dpress = 1;
+      if (edit) {
+        editcamx--;
+      }
+      else {
+        dpress = 1;
+      }
       break;
     case('W'):
       wpress = 1;
@@ -751,13 +878,48 @@ void key(unsigned char ch,int x,int y)
         count -= 5;
       }
       break;
-    case('1'):
-      area = 1;
+    case('0'):
+      area = 0;
       resetarea();
       break;
+    case('1'):
+      if (!edit) {
+        area = 1;
+        resetarea();
+      }
+      break;
     case('2'):
-      area = 2;
+      if (!edit) {
+        area = 2;
+        resetarea();
+      }
+      break;
+    case('3'):
+      if (!edit) {
+        area = 3;
+        resetarea();
+      }
+      break;
+    case('4'):
+      if (!edit) {
+        area = 4;
+        resetarea();
+      }
+      break;
+    case('`'):
+      if (edit) {
+        edit = 0;
+        area = oldarea;
+      }
+      else {
+        area = 0;
+        edit = 1;
+        oldarea = area;
+      }
       resetarea();
+      break;
+    case('c'):
+      clearcustomtrees();
       break;
   }
   Project();
@@ -769,23 +931,25 @@ void keyup(unsigned char ch,int x,int y) {
   switch (ch) {
     case('d'):
       dpress = 0;
+      shift = 0;
       break;
     case('a'):
       apress = 0;
+      shift = 0;
       break;
     case('w'):
       wpress = 0;
+      shift = 0;
       break;
     case('s'):
       spress = 0;
+      shift = 0;
       break;
     case('W'):
       wpress = 0;
-      shift = 0;
       break;
     case('S'):
       spress = 0;
-      shift = 0;
       break;
     case('A'):
       apress = 0;
@@ -812,76 +976,120 @@ void reshape(int w,int h)
 
 void update()
 {
+  if (!edit) {
+    pastcamx = camx;
+    pastcamz = camz;
 
-  int col;
+    steepness = 0.25*steep();
 
-  if (dpress || apress) {
-    timerad += 0.1;
-  }
-  else {
-    timerad -= 0.1;
-  }
+    if (dpress || apress) {
+      timerad += 0.05;
+    }
+    else {
+      timerad -= 0.05;
+    }
 
-  if (timerad < 0) {
-    timerad = 0;
-  }
-  if (timerad > 2) {
-    timerad = 2;
-  }
+    if (timerad < 0) {
+      timerad = 0;
+    }
+    if (timerad > 2) {
+      timerad = 2;
+    }
 
-  col = collision();
-  if (dpress && apress) {
-    timerad = 0;
-  }
-  else if (dpress && col != 2) {
-    lx += 0.01*timerad;
-  }
-  else if (apress && col != 1) {
-    lx -= 0.01*timerad;
-  }
+    if (!col) {
+      col = collision();
+    }
 
-  if (wpress || spress) {
-    timerws += 0.1;
-  }
-  else {
-    timerws -= 0.1;
-  }
+    if (dpress && apress) {
+      timerad = 0;
+    }
+    else if (dpress) {
+      lx += 0.01*timerad;
+    }
+    else if (apress) {
+      lx -= 0.01*timerad;
+    }
 
-  if (timerws < 0) {
-    timerws = 0;
-  }
-  if (timerws > 2 && !shift) {
-    timerws = 2;
-  }
-  if (timerws > 5) {
-    timerws = 5;
-  }
+    if (wpress) {
+      if (timerws > 0) {
+        timerws += 0.02;
+      }
+      else {
+        timerws += 0.05;
+      }
+    }
+    else if (spress) {
+      if (timerws > 0) {
+        timerws -= 0.05;
+      }
+      else {
+        timerws -= 0.02;
+      }
+    }
+    else {
+      if (timerws > 0.01) {
+        timerws -= 0.01;
+      }
+      else if (timerws < -0.01) {
+        timerws += 0.01;
+      }
+      timerws += 0.4*steepness;
+    }
 
-  col = collision();
-  if (wpress && spress) {
-    timerws = 0;
-  }
-  else if (wpress && col != 3) {
-    camx += vx*0.05*timerws;
-    camz += vz*0.05*timerws;
-  }
-  else if (spress && col != 4) {
-    camx -= vx*0.05*timerws;
-    camz -= vz*0.05*timerws;
-  }
+    if (timerws < -10 && !shift) {
+      timerws = -10;
+    }
+    if (timerws < -50) {
+      timerws = -50;
+    }
+    if (timerws > 10 && !shift) {
+      timerws = 10;
+    }
+    if (timerws > 50) {
+      timerws = 5;
+    }
 
-  vx = cos(lx);
-  vy = ly;
-  vz = sin(lx);
+    if (wpress && spress) {
+      timerws = 0;
+    }
+    //else if (wpress || spress) {
+      camx += vx*0.05*timerws;
+      camz += vz*0.05*timerws;
+    //}
 
-  timer += 25;
+    if (air > 1) {
+      airtime += 0.005;
+      air -= airtime;
+    }
+    else {
+      air = 0.5*timerws*(getheight(pastcamz+vz*4, pastcamx+vx*4) - getheight(camz+vz*4, camx+vx*4));
+    }
 
-  if (camx > 58 && camz > -6 && camz < 6) {
-    timer -= 25;
+    if (air < 0) {
+      air = 0;
+    }
+
+    timer += 25;
+
+    if (camx > 58 && camz > -6 && camz < 6) {
+      timer -= 25;
+    }
   }
 
   glutPostRedisplay();
   glutTimerFunc(25, update, 0);
+}
+
+void mouse(int button, int state, int x, int y) {
+  switch (button) {
+    case (GLUT_LEFT_BUTTON):
+      if (state == GLUT_UP && edit) {
+        customtrees[customtreecount][0] = editcamx - (x - 250)/35.0 + 1.2;
+        customtrees[customtreecount][1] = editcamz - (y - 250)/35.0 + 1.2;
+        customtreecount++;
+      }
+      break;
+  }
 }
 
 // GLut initialiation and main loop
@@ -903,6 +1111,7 @@ int main(int argc,char* argv[])
   // Tell GLUT to call "key" when a key is pressed
   glutKeyboardFunc(key);
   glutKeyboardUpFunc(keyup);
+  glutMouseFunc(mouse);
   glutTimerFunc(25, update, 0);
   // Load Textures
   if (!LoadGLTextures())                         // Jump To Texture Loading Routine
