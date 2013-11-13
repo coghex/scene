@@ -31,6 +31,9 @@ int mapdiff = 0;
 int timer = 0;
 int col = 0;
 int edit = 0;
+int copy = 0;
+int addmode = 0;
+int gnar = 0;
 double steepness = 0;
 double air = 0;
 double airtime = 0;
@@ -45,6 +48,7 @@ double randomlistangle[128];
 double randomlistsize[128];
 double customtrees[128][2];
 int randomtreesize[128];
+unsigned char usermap[128][128];
 
 int customtreecount = 0;
 
@@ -62,7 +66,6 @@ GLfloat tc1 = 1;
 GLfloat tc0 = 0;
 
 int area = 1;
-int oldarea = 1;
 
 // key pres stuff
 int apress = 0;
@@ -174,6 +177,15 @@ void cleartrees() {
   }
 }
 
+void copymap(unsigned char map1[128][128], unsigned char map2[128][128]) {
+  int i, j;
+  for (i = 0; i < 128; i++) {
+    for (j = 0; j < 128; j++) {
+      map2[i][j] = map1[i][j];
+    }
+  }
+}
+
 void resetarea(void) {
   camx = -4;
   camz = 1;
@@ -183,10 +195,15 @@ void resetarea(void) {
   vx = 0;
   vz = 0;
   lx = 0;
+  gnar = 0;
   cleartrees();
   switch (area) {
     case (0):
       mapdiff = loadterrain("data/terrain/user.tga");
+      if (copy) {
+        copymap(usermap, map);
+      }
+      copy = 1;
       break;
     case (1):
       mapdiff = loadterrain("data/terrain/ski.tga");
@@ -567,13 +584,14 @@ void drawcustomtrees(){
   }
 }
 
-void clearcustomtrees() {
+void clearcustommap() {
   int i;
   for (i = 0; i < customtreecount; i++) {
     customtrees[i][0] = 0;
     customtrees[i][1] = 0;
   }
   customtreecount = 0;
+  mapdiff = loadterrain("data/terrain/user.tga");
 }
 
 void win(void) {
@@ -584,6 +602,8 @@ void win(void) {
   timerws = 0;
   int sec = ((timer/1000)%60);
   int min = sec/60;
+  //int gnarsec = ((gnar/1000)%60);
+  //int gnarmin = gnarsec/60;
 
   glWindowPos2i(width/2-60,height/2);
   begintext(width, height);
@@ -598,9 +618,55 @@ void win(void) {
     Print("Time of %d:%d", min, sec);
   }
   endtext();
-  glWindowPos2i(width/2-120,height/2 - 40);
+
+  glWindowPos2i(width/2-90,height/2 - 40);
   begintext(width, height);
-  Print("choose your map by number");
+  Print("Total Gnar: %d", gnar);
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 60);
+  begintext(width, height);
+  Print("Choose Map By Number:");
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 80);
+  begintext(width, height);
+  Print("1 - Jumps and Stuff");
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 100);
+  begintext(width, height);
+  Print("2 - Big Jump");
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 120);
+  begintext(width, height);
+  Print("3 - Bumpy");
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 140);
+  begintext(width, height);
+  Print("4 - Pipe");
+  endtext();
+
+  glWindowPos2i(width/2-140,height/2 - 160);
+  begintext(width, height);
+  Print("0 - Custom");
+  endtext();
+}
+
+void printmode(void) {
+  glWindowPos2i(5,5);
+  begintext(width, height);
+  if (addmode == 0) {
+    Print("You are adding Trees!");
+  }
+  else if (addmode == 1) {
+    Print("You are adding snow!");
+  }
+  else if (addmode == 2) {
+    Print("You are removing snow!");
+  }
   endtext();
 }
 
@@ -664,6 +730,39 @@ void fog(void) {
   glFogf(GL_FOG_START, 10.0f);             // Fog Start Depth
   glFogf(GL_FOG_END, 50.0f);               // Fog End Depth
   glEnable(GL_FOG);                   // Enables GL_FOG
+}
+
+void addland(double x, double z, int dir){
+  double b = x/0.4+68;
+  double a = z/0.4+68;
+
+  map[(int)a][(int)b] += dir*(3.0);
+
+  map[(int)a][(int)b+1] += dir*(2.0);
+  map[(int)a][(int)b-1] += dir*(2.0);
+  map[(int)a+1][(int)b+1] += dir*(2.0);
+  map[(int)a+1][(int)b] += dir*(2.0);
+  map[(int)a+1][(int)b-1] += dir*(2.0);
+  map[(int)a-1][(int)b+1] += dir*(2.0);
+  map[(int)a-1][(int)b] += dir*(2.0);
+  map[(int)a-1][(int)b-1] += dir*(2.0);
+
+  map[(int)a+2][(int)b-2] += dir;
+  map[(int)a+2][(int)b-1] += dir;
+  map[(int)a+2][(int)b] += dir;
+  map[(int)a+2][(int)b+1] += dir;
+  map[(int)a+2][(int)b+2] += dir;
+  map[(int)a+1][(int)b+2] += dir;
+  map[(int)a][(int)b+2] += dir;
+  map[(int)a-1][(int)b+2] += dir;
+  map[(int)a-2][(int)b+2] += dir;
+  map[(int)a-2][(int)b+1] += dir;
+  map[(int)a-2][(int)b] += dir;
+  map[(int)a-2][(int)b-1] += dir;
+  map[(int)a-2][(int)b-2] += dir;
+  map[(int)a-1][(int)b-2] += dir;
+  map[(int)a][(int)b-2] += dir;
+  map[(int)a+1][(int)b-2] += dir;
 }
 
 // Display Routine
@@ -760,18 +859,22 @@ void display()
   else if (col) {
     lose();
   }
-
   else {
-    glWindowPos2i(5,5);
-    begintext(width, height);
-    if (sec < 10) {
-      Print("%d:0%d", min, sec);
+    glColor3f(1,0,0);
+    if (!edit) {
+      glWindowPos2i(5,5);
+      begintext(width, height);
+      if (sec < 10) {
+        Print("%d:0%d", min, sec);
+      }
+      else {
+        Print("%d:%d", min, sec);
+      }
+      endtext();
     }
     else {
-      Print("%d:%d", min, sec);
+      printmode();
     }
-    endtext();
-
   }
 
   treecount = 0;
@@ -805,10 +908,6 @@ void key(unsigned char ch,int x,int y)
     // Exit on ESC
     case(27):
       exit(0);
-      break;
-    // spacebar
-    case(32):
-      pause = !pause;
       break;
     case('['):
       tc0 += 0.005;
@@ -909,17 +1008,20 @@ void key(unsigned char ch,int x,int y)
     case('`'):
       if (edit) {
         edit = 0;
-        area = oldarea;
+        copymap(map, usermap);
       }
       else {
         area = 0;
         edit = 1;
-        oldarea = area;
+        resetarea();
       }
-      resetarea();
       break;
     case('c'):
-      clearcustomtrees();
+      clearcustommap();
+      break;
+    case(32):
+      addmode++;
+      if (addmode == 3) addmode = 0;
       break;
   }
   Project();
@@ -1058,6 +1160,7 @@ void update()
     //}
 
     if (air > 1) {
+      gnar += 25;
       airtime += 0.005;
       air -= airtime;
     }
@@ -1081,14 +1184,33 @@ void update()
 }
 
 void mouse(int button, int state, int x, int y) {
-  switch (button) {
-    case (GLUT_LEFT_BUTTON):
-      if (state == GLUT_UP && edit) {
-        customtrees[customtreecount][0] = editcamx - (x - 250)/35.0 + 1.2;
-        customtrees[customtreecount][1] = editcamz - (y - 250)/35.0 + 1.2;
-        customtreecount++;
-      }
-      break;
+  double factor;
+  if (height <= 600)
+    factor = 34;
+  else if (height <= 900)
+    factor = 61;
+  else
+    factor = 80;
+  if (button == GLUT_LEFT_BUTTON) {
+    switch (addmode) {
+      case (0):
+        if (state == GLUT_UP && edit) {
+          customtrees[customtreecount][0] = editcamx - (x - width/2)/factor;
+          customtrees[customtreecount][1] = editcamz - (y - height/2)/factor;
+          customtreecount++;
+        }
+        break;
+      case (1):
+        if (state == GLUT_UP && edit) {
+          addland(editcamx - (x - 250)/factor, editcamz - (y - 250)/factor, 5);
+        }
+        break;
+      case (2):
+        if (state == GLUT_UP && edit) {
+          addland(editcamx - (x - 250)/factor, editcamz - (y - 250)/factor, -5);
+        }
+        break;
+    }
   }
 }
 

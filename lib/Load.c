@@ -9,7 +9,6 @@
 #include <GL/glut.h>
 #endif
 
-
 // uses the same apporach as NeHe but for an RGB tga file
 int loadterrain(char *name) {
   FILE *filePointer;
