@@ -1,32 +1,37 @@
 scene
 =====
 
-This scene includes some happy little trees.
-w moves forward s moves back.  a and d make
-you rotate left and right.  arrow up and down will
-look up and down.  escape exits the program.
-you can move the light along its circular path
-using the q and e keys.
+The goal of this game is to reach the end of the
+map (i.e. the finish line) in as little as time
+possible.  Movement is accomplished with w, a, s,
+and d.  you can choose maps using the numbers.
+Map number 0 is a blank slate that you can
+customize.  if you press the ` key (to the left
+of the one) you can enter the editing mode.  where
+you click it will add a tree.  if you press the
+spacebar instead of adding trees on clicks it will
+raise the terrain, spacebar again and it will lower
+the terrain. esc key exits the program.  When you
+reach the finish line it will give you a time, and
+a score, based on how much air you caught.
 
 all textures are cited in the code and taken from
 people who are allowing users to use them for non
 commercial purposes.  Many of them were edited
 slightly by myself in order to look better or be
-small enough for me to reasonably load.
-
-This runs pretty slow on weaker machines, there's
-a lot of stuff going on.
+small enough for me to reasonably load.  all of the
+maps except for level 3 were made by me.  it is
+fairly easy to make them.  just make a 128x128 .tga
+file in an image editor (such as gimp) and when you
+export make sure to turn off RLE. your character
+will travel from left to right on you map twice.
+Lighter regions indicate a higher place on the map
+and you must make sure that both ends of the map
+(front and back) are of constant height, or the
+terrain wont correctly overlap.
 
 to compile, go into the directory and enter:
 >make
 
 this will output scene, then:
 >./scene
-
-As far as what I had difficulty with, I am still
-working on textureing the ground.  Additionally,
-the rocks look nice but it would be cool to texture
-them too.  This means parsing mtl files.  That sounds
-hard so I may or may not do that.  Right now you move
-a tree around, I want to make this a person, maybe a
-skier.
