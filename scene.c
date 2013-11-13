@@ -678,9 +678,9 @@ void lose(void) {
   timerws = 0;
   timerad = 0;
 
-  glWindowPos2i(width/2-60,height/2);
+  glWindowPos2i(width/2-130,height/2);
   begintext(width, height);
-  Print("YOU LOSE!");
+  Print("YOU LOSE! GOOD DAY SIR!");
   endtext();
   glWindowPos2i(width/2-120,height/2 - 40);
   begintext(width, height);
@@ -870,6 +870,10 @@ void display()
       else {
         Print("%d:%d", min, sec);
       }
+      endtext();
+      glWindowPos2i(5,25);
+      begintext(width, height);
+      Print("Gnar: %d", gnar);
       endtext();
     }
     else {
