@@ -46,6 +46,69 @@ static void cone(double x, double y, double z,
   glPopMatrix();
 }
 
+static void cube(double x, double y, double z,
+                     double dx, double dy, double dz,
+                     double th) {
+  double size = 1;
+
+  glPushMatrix();
+  glTranslated(x,y,z);
+  glRotated(th,0,1,0);
+  glScaled(dx,dy,dz);
+
+  x -= size/2;
+  y -= size/2;
+  z -= size/2;
+
+  glBegin(GL_QUADS);
+  glNormal3f(0, 0, -1);
+  glVertex3f(x, y, z + size);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x + size, y + size, z + size); 
+  glVertex3f(x + size, y, z + size);
+  glEnd();
+  glBegin(GL_QUADS);
+  glNormal3f(0, 0, 1);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x, y + size, z); 
+  glVertex3f(x, y, z);
+  glEnd();
+  glBegin(GL_QUADS);
+  glNormal3f(1, 0, 0);
+  glVertex3f(x, y + size, z);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x, y, z + size); 
+  glVertex3f(x, y, z);
+  glEnd();
+  glBegin(GL_QUADS);
+  glNormal3f(-1, 0, 0);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x + size, y + size, z + size); 
+  glVertex3f(x + size, y + size, z);
+  glEnd();
+  glBegin(GL_QUADS);
+  glNormal3f(0, -1, 0);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x, y + size, z + size); 
+  glVertex3f(x, y + size, z);
+  glEnd();
+  glBegin(GL_QUADS);
+  glNormal3f(0, 1, 0);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x, y, z); 
+  glVertex3f(x, y, z+size);
+  glEnd();
+
+
+
+  glPopMatrix();
+
+}
+
 // A function to draw a cylinder
 static void cylinder(double x, double y, double z,
                      double dx, double dy, double dz,
@@ -54,7 +117,7 @@ static void cylinder(double x, double y, double z,
   glPushMatrix();
   // Offset
   glTranslated(x,y,z);
-  glRotated(th,0,1,0);
+  glRotated(th,1,0,0);
   glScaled(dx,dy,dz);
 
   float white[] = {1,1,1,1};

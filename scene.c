@@ -40,6 +40,7 @@ double airtime = 0;
 double pastcamx = -4;
 double pastcamz = 1;
 
+double trail[1000][2];
 double randomlistx[128];
 double randomlisty[128];
 double randomlistrockx[128];
@@ -49,6 +50,12 @@ double randomlistsize[128];
 double customtrees[128][2];
 int randomtreesize[128];
 unsigned char usermap[128][128];
+double rockmap[10000][3];
+double rockmapn[10000][3];
+int rocknormals[10000][10000];
+double catmap[10000][3];
+double catmapn[10000][3];
+int catnormals[10000][10000];
 
 int customtreecount = 0;
 
@@ -86,12 +93,24 @@ GLfloat fogColor[4]= {0.5f, 0.5f, 0.5f, 1.0f};
 double rep = 1;
 double scale = 0.02;
 
-// rock list
+// object list
 GLuint rock;
+GLuint cat;
 
 // collision detection
 double treemap[128][3];
 int treecount = 0;
+
+// snow
+struct flake
+{
+  GLfloat x,y,z;
+	GLfloat r,g,b;
+	GLfloat xd,yd,zd;
+	GLfloat cs;
+} s[1000];
+int windd=45;
+GLfloat winds=0.001f;
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
@@ -765,6 +784,103 @@ void addland(double x, double z, int dir){
   map[(int)a+1][(int)b-2] += dir;
 }
 
+void maketrail(double x, double z) {
+
+}
+
+void drawcat(double x, double y, double z,
+    double dx, double dy, double dz, double s) {
+
+  double xang = getheight(z-0.5, x) - getheight(z+0.5, x);
+  double zang = -(getheight(z, x-0.5) - getheight(z, x+0.5));
+  if (xang > 90) {
+    xang = 90;
+  }
+  if (zang > 90) {
+    zang = 90;
+  }
+
+  glPushMatrix();
+  glTranslatef(x,y,z);
+  glScalef(dx,dy,dz);
+
+  glRotated(xang*50,1,0,0);
+  glRotated(s,0,1,0);
+  glRotated(zang*50,0,0,1);
+
+  glColor3f(0.7,0,0);
+  //glCallList(rock);
+  cube(0, 0, 0, 1, 0.5, 0.75, 0);
+  glColor3f(0, 0, 0);
+  cylinder(0.4, -0.2, 0.5, 0.1, 0.1, 0.1, 90);
+  cylinder(-0.4, -0.2, 0.5, 0.1, 0.1, 0.1, 90);
+  cylinder(0.4, -0.2, -0.5, 0.1, 0.1, 0.1, 90);
+  cylinder(-0.4, -0.2, -0.5, 0.1, 0.1, 0.1, 90);
+  cube(0, -0.15, 0, 0.8, 0.2, 1.4, 0);
+  cylinder(-0.2, 0.1, 0.2, 0.05, 0.2, 0.05, 0);
+
+  maketrail(x, z);
+
+  glPopMatrix();
+  treemap[treecount][0] = x;
+  treemap[treecount][1] = z;
+  treemap[treecount][2] = 0.4;
+  treecount++;
+}
+
+void initsnow() {
+  for (int i = 0; i < 1000; i++) {
+    s[i].xd=-(randnum(32767)/32767.0f-0.5f)/200.0f;
+		s[i].zd=-(randnum(32767)/32767.0f-0.5f)/200.0f;
+		s[i].yd=-randnum(32767)/32767.0f/10000.0f;
+		s[i].x=4*(randnum(32767)/32767.0f-0.5f);
+		s[i].y=(randnum(32767)/32767.0f-0.5f);
+		s[i].z=4*(randnum(32767)/32767.0f-0.5f);
+		s[i].b=randnum(32767)/32767.0f;
+    if (s[i].b < 0.5) {
+      s[i].b += 0.5;
+    }
+		s[i].g=s[i].b;
+		s[i].r=s[i].b;
+  }
+}
+
+// This is heavily inspired by code I found here:
+// http://www.planet-source-code.com/vb/scripts/ShowCode.asp?lngWId=3&txtCodeId=5594
+void drawsnow(x, z) {
+  glPushMatrix();
+  glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+  glTranslatef(x,(getheight(z, x) + getheight(z+20, x+20))/2,z);
+  glScalef(5, 20, 5);
+  glBegin(GL_POINTS);
+  for (int i=0;i<1000;i++)
+  {
+    s[i].x+=cos(windd*.0174532925f)*winds;
+    s[i].y+=s[i].yd;
+    s[i].z+=sin(windd*.0174532925f)*winds;
+    s[i].yd-=randnum(32767)/32767.0f/1000000.0f;
+    if (s[i].y<=(getheight(z, x) + getheight(z+20, x+20))/2 - 2.5f)
+    {
+      s[i].xd=-(randnum(32767)/32767.0f-0.5f)/200.0f;
+      s[i].zd=-(randnum(32767)/32767.0f-0.5f)/200.0f;
+      s[i].yd=-randnum(32767)/32767.0f/10000.0f;
+      s[i].x=4*(randnum(32767)/32767.0f-0.5f);
+      s[i].y=randnum(32767)/32767.0f;
+      s[i].z=4*(randnum(32767)/32767.0f-0.5f);
+      s[i].b=randnum(32767)/32767.0f;
+      if (s[i].b < 0.5) {
+        s[i].b += 0.5;
+      }
+      s[i].g=s[i].b;
+      s[i].r=s[i].b;
+    }
+    glColor3f(s[i].r,s[i].g,s[i].b);
+    glVertex3f(s[i].x,s[i].y,s[i].z);
+  }
+  glEnd();
+  glPopMatrix();
+}
+
 // Display Routine
 void display()
 {
@@ -803,7 +919,7 @@ void display()
     lettherebelight();
     fog();
     dooohmmmme(camx, camy, camz, 10);
-    tree(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, 0, 2);
+    drawcat(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, -lx*57);
   }
   else {
     glDisable(GL_FOG);
@@ -842,6 +958,14 @@ void display()
   }
   else {
     drawcustomtrees();
+  }
+
+  if (!edit) {
+    for (i = -1; i < 4; i++) {
+      for (j = -1; j < 1; j++) {
+        drawsnow(20*i, 20*j);
+      }
+    }
   }
 
   glEnable(GL_TEXTURE_2D);
@@ -984,29 +1108,34 @@ void key(unsigned char ch,int x,int y)
     case('0'):
       area = 0;
       resetarea();
+      initsnow();
       break;
     case('1'):
       if (!edit) {
         area = 1;
         resetarea();
+        initsnow();
       }
       break;
     case('2'):
       if (!edit) {
         area = 2;
         resetarea();
+        initsnow();
       }
       break;
     case('3'):
       if (!edit) {
         area = 3;
         resetarea();
+        initsnow();
       }
       break;
     case('4'):
       if (!edit) {
         area = 4;
         resetarea();
+        initsnow();
       }
       break;
     case('`'):
@@ -1211,7 +1340,7 @@ void mouse(int button, int state, int x, int y) {
         break;
       case (2):
         if (state == GLUT_UP && edit) {
-          addland(editcamx - (x - 250)/factor, editcamz - (y - 250)/factor, -5);
+          addland(editcamx - (x - 250)/factor, editcamz - (y - 250)/factor, -1);
         }
         break;
     }
@@ -1246,11 +1375,17 @@ int main(int argc,char* argv[])
   }
   mapdiff = loadterrain("data/terrain/ski.tga");
   //I found the rock here: http://robo3d.com/index.php?pr=100903-tip2
-  rock = loadCube("data/objects/rock.obj", rock);
+  rock = loadCube("data/objects/rock.obj", rock, rockmap, rockmapn, rocknormals);
   if (rock == 0) {
     exit(0);
   }
+  cat = loadCube("data/objects/cat.obj", cat, catmap, catmapn, catnormals);
+  if (cat == 0) {
+    exit(0);
+  }
+
   initrandomnumbers();
+  initsnow();
 
   // Pass control to GLUT so it can interact with the user
   glutMainLoop();

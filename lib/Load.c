@@ -267,7 +267,7 @@ int LoadGLTextures(void)
   return 1;                                   // Return The Status
 }
 
-GLuint loadCube(char *fname, GLuint cube)
+GLuint loadCube(char *fname, GLuint cube, double cubemap[10000][3], double cubemapn[10000][3], int normals[10000][10000])
 {
   FILE *fp;
   int read;
