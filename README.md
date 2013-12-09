@@ -35,15 +35,7 @@ most of my basic goals were implemented, with the
 exception of the guy who walks around, I decided
 to make this a game, and so I have a snowcat that
 you drive around.  I would also like to have more
-naturey things other than the rocks.  I intend on
-adding three more things.  First a snow trail. I
-want the cat to leave a snow trail as it goes, I
-am thinking I will change the texture at the
-location of the cat as it moves along.  I also
-want smoke coming out of the little chimney on
-the snow cat.  I also want to add snow, using a
-particle engine.  As I move along I am sure I will
-come up with new things to work on as well.
+naturey things other than the rocks.
 
 If you would like to view my current progress this
 project can be seen at:
