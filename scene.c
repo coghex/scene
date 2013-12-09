@@ -1,5 +1,5 @@
 // Author: Vince Coghlan (vince.coghlan@colorado.edu)
-// Date: 11/3/13
+// Date: 12/10/13
 // Description: This is a 3d scene of some happy little trees
 
 #include <stdio.h>
@@ -39,8 +39,12 @@ double air = 0;
 double airtime = 0;
 double pastcamx = -4;
 double pastcamz = 1;
+int issploding = 1;
 
-double trail[1000][2];
+double trail[1000][3];
+int trailon = 0;
+int trailcount = 0;
+
 double randomlistx[128];
 double randomlisty[128];
 double randomlistrockx[128];
@@ -56,6 +60,7 @@ int rocknormals[10000][10000];
 double catmap[10000][3];
 double catmapn[10000][3];
 int catnormals[10000][10000];
+double look = 0;
 
 int customtreecount = 0;
 
@@ -111,6 +116,32 @@ struct flake
 } s[1000];
 int windd=45;
 GLfloat winds=0.001f;
+
+
+// All this explosion code I shamelessly stole from here:
+// http://www.student.nada.kth.se/~nv91-gta/OpenGL/examples/explosion.html
+struct splodyparticle
+{
+  float   position[3];
+  float   speed[3];
+  float   color[3];
+}; typedef struct splodydebris    splodydebris;
+
+struct splodydebris
+{
+  float   position[3];
+  float   speed[3];
+  float   orientation[3];        /* Rotation angles around x, y, and z axes */
+  float   orientationSpeed[3];
+  float   color[3];
+  float   scale[3];
+};  typedef struct splodyparticle    splodyparticle;
+
+splodyparticle p[1000];
+splodydebris d[70];
+int fuel = 0;
+float angle = 0.0;
+
 
 // Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.1415927/180))
@@ -205,6 +236,7 @@ void copymap(unsigned char map1[128][128], unsigned char map2[128][128]) {
   }
 }
 
+// When we change the area there's some things we need to do
 void resetarea(void) {
   camx = -4;
   camz = 1;
@@ -215,6 +247,7 @@ void resetarea(void) {
   vz = 0;
   lx = 0;
   gnar = 0;
+  issploding = 1;
   cleartrees();
   switch (area) {
     case (0):
@@ -242,6 +275,7 @@ void resetarea(void) {
   }
 }
 
+// Makes trees random
 void initrandomnumbers(void) {
   int i;
   srand(time(NULL));
@@ -257,6 +291,7 @@ void initrandomnumbers(void) {
   }
 }
 
+// Tests if you are in a tree or a rock
 int collision(void) {
   int i = 0;
   int j = 0;
@@ -358,6 +393,7 @@ double getheight(double x, double z) {
   }
 }
 
+// Draws a rock using a openGL list
 void drawRock(double x, double y, double s, double th)
 {
   glPushMatrix();
@@ -444,6 +480,7 @@ void drawGround(unsigned char map[128][128])
   glDisable(GL_TEXTURE_2D);
 }
 
+// This draws a tree!
 void tree(double x, double y, double z,
           double dx, double dy, double dz,
           double th, int br) {
@@ -554,6 +591,7 @@ void dooohmmmme(float x, float y, float z, float len) {
   }
 }
 
+// Draws a little finish line
 void drawgoal(int x) {
   int i;
   glPushMatrix();
@@ -734,6 +772,7 @@ void lettherebelight(void)
 
 }
 
+// Returns steepness
 double steep(void) {
   return getheight(camz, camx) - getheight(camz+vz, camx+vx);
 }
@@ -751,6 +790,7 @@ void fog(void) {
   glEnable(GL_FOG);                   // Enables GL_FOG
 }
 
+// Adds land to the custom map
 void addland(double x, double z, int dir){
   double b = x/0.4+68;
   double a = z/0.4+68;
@@ -784,9 +824,100 @@ void addland(double x, double z, int dir){
   map[(int)a+1][(int)b-2] += dir;
 }
 
-void maketrail(double x, double z) {
+// follows a trail behind the cat.  Looks bad, so
+// its not default in game.  Left the code cause why not?
+void maketrail(double x, double z, double s) {
+  int i;
 
+  trailcount++;
+  if (trailcount >= 999) {
+    trailcount = 999;
+  }
+
+  for (i = treecount; i >= 0; i--) {
+    trail[i+1][0] = trail[i][0];
+    trail[i+1][1] = trail[i][1];
+    trail[i+1][2] = trail[i][2];
+  }
+  trail[0][0] = x;
+  trail[0][1] = z;
+  trail[0][2] = s;
 }
+
+void drawtrail() {
+  int i;
+
+  float white[] = {1,1,1,1};
+  float black[] = {0,0,0,1};
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture[20]);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,shinyvec);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
+
+  for (i = 1; i < trailcount-1; i++) {
+    glPushMatrix();
+    double xang = getheight(trail[i][1]-0.5, trail[i][0]) - getheight(trail[i][1]+0.5, trail[i][0]);
+    double zang = -(getheight(trail[i][1], trail[i][0]-0.5) - getheight(trail[i][1], trail[i][0]+0.5));
+    if (xang > 90) {
+      xang = 90;
+    }
+    if (zang > 90) {
+      zang = 90;
+    }
+    glTranslatef(trail[i][0],getheight(trail[i][1], trail[i][0])-0.2,trail[i][1]);
+    glRotated(xang*50,1,0,0);
+    glRotated(trail[i][2],0,1,0);
+    glRotated(zang*50,0,0,1);
+
+    square(-0.25, 0, -0.3, 0.8, 0.2, 1.4, 0);
+
+    glPopMatrix();
+  }
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_BLEND);
+}
+
+// For when the cat explodes, some of this code taken from
+// the particle explosion code.
+void drawsplodecat(double x, double y, double z,
+    double dx, double dy, double dz, double s) {
+
+  double xang = getheight(z-0.5, x) - getheight(z+0.5, x);
+  double zang = -(getheight(z, x-0.5) - getheight(z, x+0.5));
+  if (xang > 90) {
+    xang = 90;
+  }
+  if (zang > 90) {
+    zang = 90;
+  }
+
+  glPushMatrix();
+  glTranslatef(x,y,z);
+  glScalef(dx,dy,dz);
+
+  glRotated(xang*50,1,0,0);
+  glRotated(s,0,1,0);
+  glRotated(zang*50,0,0,1);
+
+  glColor3f(0, 0, 0);
+  cylinder(0.4, -0.2, 0.5, 0.1, 0.1, 0.1, 100);
+  cylinder(-0.4, -0.2, 0.5, 0.1, 0.1, 0.1, 45);
+  cylinder(0.4, -0.2, -0.5, 0.1, 0.1, 0.1, 70);
+  cylinder(-0.4, -0.2, -0.5, 0.1, 0.1, 0.1, 80);
+  cube(0, -0.15, 0, 0.8, 0.2, 1.4, 0);
+  cylinder(-0.2, 0.1, 0.2, 0.05, 0.2, 0.05, 5);
+
+
+  glPopMatrix();
+}
+
 
 void drawcat(double x, double y, double z,
     double dx, double dy, double dz, double s) {
@@ -819,8 +950,6 @@ void drawcat(double x, double y, double z,
   cube(0, -0.15, 0, 0.8, 0.2, 1.4, 0);
   cylinder(-0.2, 0.1, 0.2, 0.05, 0.2, 0.05, 0);
 
-  maketrail(x, z);
-
   glPopMatrix();
   treemap[treecount][0] = x;
   treemap[treecount][1] = z;
@@ -828,6 +957,7 @@ void drawcat(double x, double y, double z,
   treecount++;
 }
 
+//  Called in the begining, makes the snow.
 void initsnow() {
   for (int i = 0; i < 1000; i++) {
     s[i].xd=-(randnum(32767)/32767.0f-0.5f)/200.0f;
@@ -845,6 +975,7 @@ void initsnow() {
   }
 }
 
+// Manages the snow using a particle engine
 // This is heavily inspired by code I found here:
 // http://www.planet-source-code.com/vb/scripts/ShowCode.asp?lngWId=3&txtCodeId=5594
 void drawsnow(x, z) {
@@ -881,6 +1012,108 @@ void drawsnow(x, z) {
   glPopMatrix();
 }
 
+// sets a new random speed for each snowflake
+void newSpeed (float dest[3])
+{
+  float    x;
+  float    y;
+  float    z;
+  float    len;
+
+  x = (200.0 * ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 100.0;
+  y = (200.0 * ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 100.0;
+  z = (200.0 * ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 100.0;
+  len = sqrt (x * x + y * y + z * z);
+
+  if (len)
+	{
+	  x = x / len;
+	  y = y / len;
+	  z = z / len;
+	}
+
+  dest[0] = x;
+  dest[1] = y;
+  dest[2] = z;
+}
+
+// what happens when the cat hits something
+void splode(){
+  int    i;
+
+  for (i = 0; i < 1000; i++)
+    {
+      p[i].position[0] = 0.0;
+      p[i].position[1] = 0.0;
+      p[i].position[2] = 0.0;
+
+      p[i].color[0] = 1.0;
+      p[i].color[1] = 1.0;
+      p[i].color[2] = 0.5;
+
+      newSpeed (p[i].speed);
+    }
+
+  for (i = 0; i < 70; i++)
+    {
+      d[i].position[0] = 0.0;
+      d[i].position[1] = 0.0;
+      d[i].position[2] = 0.0;
+
+      d[i].orientation[0] = 0.0;
+      d[i].orientation[1] = 0.0;
+      d[i].orientation[2] = 0.0;
+
+      d[i].color[0] = 0.7;
+      d[i].color[1] = 0;
+      d[i].color[2] = 0;
+
+      d[i].scale[0] = (2.0 * 
+			    ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 1.0;
+      d[i].scale[1] = (2.0 * 
+			    ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 1.0;
+      d[i].scale[2] = (2.0 * 
+			    ((GLfloat) rand ()) / ((GLfloat) RAND_MAX)) - 1.0;
+
+      newSpeed (d[i].speed);
+      newSpeed (d[i].orientationSpeed);
+    }
+
+  fuel = 100;
+}
+
+void exsplode(double x, double y, double z) {
+  int i;
+  glPushMatrix();
+  glTranslatef(x, y, z);
+  glPushMatrix();
+  glBegin(GL_POINTS);
+  for (i = 0; i < 1000; i++) {
+    glColor3fv(p[i].color);
+    glVertex3fv(p[i].position);
+  }
+  glEnd();
+
+  glPopMatrix();
+
+  for (i = 0; i < 70; i++) {
+    glColor3fv(d[i].color);
+    glPushMatrix();
+    glTranslatef(d[i].position[0], d[i].position[1], d[i].position[2]);
+    glRotatef (d[i].orientation[0], 1.0, 0.0, 0.0);
+	  glRotatef (d[i].orientation[1], 0.0, 1.0, 0.0);
+	  glRotatef (d[i].orientation[2], 0.0, 0.0, 1.0);
+    glScalef (d[i].scale[0], d[i].scale[1], d[i].scale[2]);
+    glBegin(GL_TRIANGLES);
+    glVertex3f (0.0, 0.5, 0.0);
+	  glVertex3f (-0.25, 0.0, 0.0);
+	  glVertex3f (0.25, 0.0, 0.0);
+    glEnd();
+    glPopMatrix();
+  }
+  glPopMatrix();
+}
+
 // Display Routine
 void display()
 {
@@ -888,7 +1121,7 @@ void display()
   double a, b, c, d;
   int sec = ((timer/1000)%60);
   int min = sec/60;
-
+  int splodelook;
   // Erase the window and the depth buffer
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   // Enable Z-buffering in OpenGL
@@ -919,11 +1152,55 @@ void display()
     lettherebelight();
     fog();
     dooohmmmme(camx, camy, camz, 10);
-    drawcat(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, -lx*57);
+    if (apress) {
+      look = -lx*57 + timerad*30;
+    }
+    else if (dpress) {
+      look = -lx*57 - timerad*30;
+    }
+    else {
+      if (look < -lx*57-10) {
+        look += 10;
+      }
+      else if (look > -lx*57+10) {
+        look -= 10;
+      }
+      else {
+        look = -lx*57;
+      }
+    }
   }
   else {
     glDisable(GL_FOG);
   }
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture[0]);
+  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  drawGround(map);
+  glDisable(GL_TEXTURE_2D);
+
+  if (col && issploding) {
+    splode();
+    splodelook = -look;
+    issploding = 0;
+  }
+
+  if (!edit) {
+    if (col) {
+      drawsplodecat(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, splodelook);
+    }
+    else {
+      drawcat(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4, 1, 1, 1, look);
+    }
+  }
+  if (fuel > 0) {
+    exsplode(camx+vx*4, getheight(camz+vz*4, camx+vx*4)+0.3 + air, camz+vz*4);
+  }
+
   drawgoal(60);
 
   for (i = 0; i < 50; i++)
@@ -968,19 +1245,20 @@ void display()
     }
   }
 
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,texture[0]);
-  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  drawGround(map);
-  glDisable(GL_TEXTURE_2D);
+  if (trailon) {
+    if (air < 0.005) {
+      maketrail(camx+vx*4, camz+vz*4, look);
+    }
+
+    drawtrail();
+  }
 
   if (camx > 58 && camz > -6 && camz < 6) {
+    glColor3f(1,1,1);
     win();
   }
   else if (col) {
+    glColor3f(1,1,1);
     lose();
   }
   else {
@@ -1048,6 +1326,9 @@ void key(unsigned char ch,int x,int y)
       break;
     case('-'):
       tc1 -= 0.005;
+      break;
+    case('t'):
+      trailon = !trailon;
       break;
     case('w'):
       if (edit) {
@@ -1167,10 +1448,12 @@ void keyup(unsigned char ch,int x,int y) {
     case('d'):
       dpress = 0;
       shift = 0;
+      timerad = 0;
       break;
     case('a'):
       apress = 0;
       shift = 0;
+      timerad = 0;
       break;
     case('w'):
       wpress = 0;
@@ -1311,6 +1594,44 @@ void update()
       timer -= 25;
     }
   }
+
+  // This stuff used for explosion.
+  int i;
+  if (fuel > 0)
+	{
+	  for (i = 0; i < 1000; i++)
+	    {
+	      p[i].position[0] += p[i].speed[0] * 0.2;
+	      p[i].position[1] += p[i].speed[1] * 0.2;
+	      p[i].position[2] += p[i].speed[2] * 0.2;
+	      p[i].color[0] -= 1.0 / 500.0;
+	      if (p[i].color[0] < 0.0)
+		{
+		  p[i].color[0] = 0.0;
+		}
+	      p[i].color[1] -= 1.0 / 100.0;
+	      if (p[i].color[1] < 0.0)
+		{
+		  p[i].color[1] = 0.0;
+		}
+	      p[i].color[2] -= 1.0 / 50.0;
+	      if (p[i].color[2] < 0.0)
+		{
+		  p[i].color[2] = 0.0;
+		}
+	    }
+	  for (i = 0; i < 70; i++)
+	    {
+	      d[i].position[0] += d[i].speed[0] * 0.1;
+	      d[i].position[1] += d[i].speed[1] * 0.1;
+	      d[i].position[2] += d[i].speed[2] * 0.1;
+	      d[i].orientation[0] += d[i].orientationSpeed[0] * 10;
+	      d[i].orientation[1] += d[i].orientationSpeed[1] * 10;
+	      d[i].orientation[2] += d[i].orientationSpeed[2] * 10;
+	    }
+	  --fuel;
+	}
+
 
   glutPostRedisplay();
   glutTimerFunc(25, update, 0);

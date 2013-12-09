@@ -15,7 +15,7 @@ struct Texture {
     char *pcData;
 };
 typedef struct Texture Texture;
-unsigned int texture[20];
+unsigned int texture[21];
 int loop;
 
 double avg[10000][3];

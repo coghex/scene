@@ -10,6 +10,9 @@ static void cone(double x, double y, double z,
 static void cube(double x, double y, double z,
                      double dx, double dy, double dz,
                      double th);
+static void square(double x, double y, double z,
+                       double dx, double dy, double dz, 
+                       double th);
 static void cylinder(double x, double y, double z,
                      double dx, double dy, double dz,
                      double th);

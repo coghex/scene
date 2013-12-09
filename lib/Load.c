@@ -159,9 +159,9 @@ int LoadGLTextures(void)
   // allocate space for texture
   TextureImage = (Texture *) malloc(sizeof(Texture));
 
-  glGenTextures(20, &texture[0]);
+  glGenTextures(21, &texture[0]);
 
-  for(loop=0;loop<20;loop++)
+  for(loop=0;loop<21;loop++)
   {
     switch(loop)
     {
@@ -246,6 +246,10 @@ int LoadGLTextures(void)
 
       case 19:
         LoadBMP("data/tex/f12.bmp", TextureImage);
+        break;
+
+      case 20:
+        LoadBMP("data/tex/trail.bmp", TextureImage);
         break;
 
   }

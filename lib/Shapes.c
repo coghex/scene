@@ -109,6 +109,26 @@ static void cube(double x, double y, double z,
 
 }
 
+static void square(double x, double y, double z,
+                       double dx, double dy, double dz, 
+                       double th) {
+  int size = 1;
+  glPushMatrix();
+  glNormal3f(0, 1, 0);
+  glTranslated(x, y, z);
+  glRotated(th, 0, 1, 0);
+  glScaled(dx, dy, dz);
+
+  glBegin(GL_QUADS);
+  glTexCoord2f(0, 0); glVertex3f(x + size, y + size, z);
+  glTexCoord2f(1, 0); glVertex3f(x + size, y + size, z + size);
+  glTexCoord2f(1, 1); glVertex3f(x, y + size, z + size); 
+  glTexCoord2f(0, 1); glVertex3f(x, y + size, z);
+  glEnd();
+
+  glPopMatrix();
+  }
+
 // A function to draw a cylinder
 static void cylinder(double x, double y, double z,
                      double dx, double dy, double dz,
